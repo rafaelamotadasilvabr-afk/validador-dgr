@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Validador DGR | XML NF-e</title>
+<style>
+:root{
+  --azul:#003B71; --azul-2:#005A9C; --bg:#F3F6FA; --card:#FFFFFF;
+  --texto:#172033; --muted:#667085; --borda:#D9E2EC;
+  --ok-bg:#E7F5EC; --ok:#1F7A3F; --val-bg:#FFF4D6; --val:#9A6700; --bloq-bg:#FDE7E9; --bloq:#B42318;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--texto);font-family:Arial, Helvetica, sans-serif;font-size:14px}
+header{background:linear-gradient(135deg,var(--azul),#0B4F8A);color:#fff;padding:24px 32px;border-bottom:4px solid #1B75BB}
+.header-wrap{max-width:1500px;margin:auto;display:flex;justify-content:space-between;gap:18px;align-items:center}
+h1{margin:0;font-size:24px;letter-spacing:.2px}.subtitle{margin:6px 0 0;color:#D8E8F7;font-size:13px}
+.badge{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:8px 12px;font-size:12px;color:#fff;white-space:nowrap}
+main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.card{background:var(--card);border:1px solid var(--borda);border-radius:14px;box-shadow:0 8px 22px rgba(16,24,40,.06);padding:20px;margin-bottom:18px}.card h2{font-size:16px;margin:0 0 12px;color:#101828}.muted{color:var(--muted);font-size:13px;line-height:1.45}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.step{border:1px solid var(--borda);border-radius:10px;padding:12px;background:#FAFCFE}.step strong{display:block;color:var(--azul);font-size:12px;margin-bottom:4px}.upload{border:2px dashed #A9BDD1;border-radius:12px;background:#F8FBFF;padding:18px}.upload input{width:100%;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:12px}textarea{width:100%;min-height:210px;resize:vertical;border:1px solid var(--borda);border-radius:10px;padding:12px;font-family:Consolas,monospace;font-size:12px;background:#FBFCFE;color:#111827}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer}button.primary{background:var(--azul-2);color:#fff}button.secondary{background:#EEF2F6;color:#344054;border:1px solid var(--borda)}button.dark{background:#243447;color:#fff}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.kpi{border:1px solid var(--borda);border-radius:12px;padding:14px;background:#fff}.kpi span{display:block;color:var(--muted);font-size:12px}.kpi strong{display:block;font-size:26px;margin-top:6px}.kpi.bloq strong{color:var(--bloq)}.kpi.val strong{color:var(--val)}.kpi.ok strong{color:var(--ok)}.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.search{width:360px;max-width:100%;border:1px solid var(--borda);border-radius:10px;padding:10px 12px}.table-wrap{overflow:auto;max-height:560px;border:1px solid var(--borda);border-radius:12px}table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;background:#fff}th,td{border-bottom:1px solid #EAECF0;padding:9px 10px;vertical-align:top;white-space:nowrap}th{position:sticky;top:0;background:#F0F5FA;color:#243447;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;z-index:1}td.produto{white-space:normal;min-width:280px}.status{display:inline-block;border-radius:999px;padding:5px 9px;font-weight:800;font-size:11px}.status.bloquear{background:var(--bloq-bg);color:var(--bloq)}.status.validar{background:var(--val-bg);color:var(--val)}.status.liberado{background:var(--ok-bg);color:var(--ok)}.alerta{border-left:4px solid var(--val);background:#FFFAEB}.info{border-left:4px solid var(--azul-2);background:#F5FAFF}.small{font-size:12px}.hidden{display:none}@media(max-width:980px){.grid,.steps,.kpis{grid-template-columns:1fr}.header-wrap{align-items:flex-start;flex-direction:column}.toolbar{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-wrap">
+    <div>
+      <h1>Validador DGR | Leitor de XML NF-e</h1>
+      <p class="subtitle">Triagem operacional por descrição do produto e NCM, direto no navegador.</p>
+    </div>
+    <div class="badge">Sem envio de XML para servidor</div>
+  </div>
+</header>
+<main>
+  <section class="card info">
+    <h2>Fluxo de uso</h2>
+    <div class="steps">
+      <div class="step"><strong>1. Portal EDI</strong>Baixe o ZIP/XML por chave ou AWB.</div>
+      <div class="step"><strong>2. Seleção</strong>Extraia e selecione os XMLs no validador.</div>
+      <div class="step"><strong>3. Análise</strong>O sistema lê produto, NCM e aplica regras DGR.</div>
+      <div class="step"><strong>4. Ação</strong>Exporte CSV e trate bloqueios/validações.</div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Selecionar XMLs</h2>
+      <p class="muted">Selecione os arquivos <b>.xml</b> extraídos do ZIP baixado no Portal EDI. A leitura acontece localmente no navegador.</p>
+      <div class="upload">
+        <input id="fileInput" type="file" accept=".xml,text/xml" multiple />
+      </div>
+      <div class="actions">
+        <button class="primary" onclick="processarArquivos()">Analisar XMLs</button>
+        <button class="dark" onclick="exportarCSV()">Exportar CSV</button>
+        <button class="secondary" onclick="limpar()">Limpar</button>
+      </div>
+    </section>
+
+    <section class="card alerta">
+      <h2>Critério operacional</h2>
+      <p class="muted"><b>BLOQUEAR</b> indica forte indício de mercadoria restrita/DGR. <b>VALIDAR</b> exige conferência operacional antes do embarque. <b>LIBERADO</b> significa que nenhuma regra cadastrada foi encontrada.</p>
+      <p class="muted small">A classificação automática não substitui regra interna, FISPQ, declaração do embarcador ou validação formal quando aplicável.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Regras de alerta DGR</h2>
+    <p class="muted">Formato: <b>TERMO|STATUS|MOTIVO</b>. Uma regra por linha. O sistema pesquisa na descrição do produto e no NCM.</p>
+    <textarea id="regras">LITIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
+LÍTIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
+BATERIA|VALIDAR|Produto com bateria - validar classificação
+AEROSOL|BLOQUEAR|Aerossol / inflamável ou pressurizado
+AEROSSOL|BLOQUEAR|Aerossol / inflamável ou pressurizado
+SPRAY|VALIDAR|Spray - validar composição
+PERFUME|VALIDAR|Perfume/fragrância - validar inflamável
+PERFUME DE AMBIENTE|VALIDAR|Perfume de ambiente/aromatizador - validar inflamável
+AROMATIZADOR|VALIDAR|Aromatizador de ambiente - validar composição/inflamável
+HOME SPRAY|VALIDAR|Perfume de ambiente em spray - validar composição
+DIFUSOR|VALIDAR|Difusor/perfume de ambiente - validar composição
+ESSENCIA|VALIDAR|Essência/fragrância - validar inflamável
+ESSÊNCIA|VALIDAR|Essência/fragrância - validar inflamável
+COLONIA|VALIDAR|Colônia/fragrância - validar inflamável
+COLÔNIA|VALIDAR|Colônia/fragrância - validar inflamável
+BATOM|VALIDAR|Cosmético - verificar composição e forma de apresentação
+LIPSTICK|VALIDAR|Cosmético - verificar composição
+GLOSS|VALIDAR|Cosmético - verificar composição
+LIPGLOSS|VALIDAR|Cosmético - verificar composição
+LIP GLOSS|VALIDAR|Cosmético - verificar composição
+LIPTINT|VALIDAR|Cosmético - verificar composição
+LIP TINT|VALIDAR|Cosmético - verificar composição
+PRIMER|VALIDAR|Cosmético - verificar composição
+BASE|VALIDAR|Cosmético - verificar composição
+CORRETIVO|VALIDAR|Cosmético - verificar composição
+PO COMPACTO|VALIDAR|Cosmético - verificar composição
+PÓ COMPACTO|VALIDAR|Cosmético - verificar composição
+BLUSH|VALIDAR|Cosmético - verificar composição
+ILUMINADOR|VALIDAR|Cosmético - verificar composição
+MASCARA DE CILIOS|VALIDAR|Cosmético - verificar composição
+MÁSCARA DE CÍLIOS|VALIDAR|Cosmético - verificar composição
+DELINEADOR|VALIDAR|Cosmético - verificar composição
+MAQUIAGEM|VALIDAR|Cosmético - verificar composição
+COSMETICO|VALIDAR|Produto cosmético - verificar composição
+COSMÉTICO|VALIDAR|Produto cosmético - verificar composição
+ESMALTE|VALIDAR|Cosmético - possível inflamável
+REMOVEDOR DE ESMALTE|BLOQUEAR|Possível líquido inflamável
+ACETONA|BLOQUEAR|Líquido inflamável
+TINTA|VALIDAR|Tinta - validar composição
+VERNIZ|VALIDAR|Verniz - validar inflamável
+SOLVENTE|BLOQUEAR|Solvente - possível inflamável
+INFLAMAVEL|BLOQUEAR|Descrição indica inflamável
+INFLAMÁVEL|BLOQUEAR|Descrição indica inflamável
+ACIDO|BLOQUEAR|Ácido - possível DGR
+ÁCIDO|BLOQUEAR|Ácido - possível DGR
+GAS|BLOQUEAR|Gás/cilindro - possível DGR
+GÁS|BLOQUEAR|Gás/cilindro - possível DGR
+CILINDRO|VALIDAR|Cilindro - validar conteúdo
+QUIMICO|VALIDAR|Produto químico - validar FISPQ
+QUÍMICO|VALIDAR|Produto químico - validar FISPQ
+INSETICIDA|BLOQUEAR|Inseticida/pesticida - possível DGR
+PESTICIDA|BLOQUEAR|Pesticida - possível DGR
+850760|VALIDAR|NCM comum de bateria de lítio - validar
+330300|VALIDAR|NCM perfume/fragrância - validar inflamável</textarea>
+  </section>
+
+  <section class="card">
+    <h2>Resumo da análise</h2>
+    <div class="kpis">
+      <div class="kpi"><span>XMLs lidos</span><strong id="kpiXml">0</strong></div>
+      <div class="kpi"><span>Itens analisados</span><strong id="kpiItens">0</strong></div>
+      <div class="kpi bloq"><span>Bloquear</span><strong id="kpiBloq">0</strong></div>
+      <div class="kpi val"><span>Validar</span><strong id="kpiVal">0</strong></div>
+      <div class="kpi ok"><span>Liberado</span><strong id="kpiOk">0</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar">
+      <div>
+        <h2 style="margin-bottom:4px">Resultado</h2>
+        <p class="muted" style="margin:0">Use a busca para localizar NF, chave, produto, NCM ou status.</p>
+      </div>
+      <input id="busca" class="search" placeholder="Buscar no resultado..." oninput="renderizarTabela()" />
+    </div>
+    <div class="table-wrap">
+      <table id="resultado">
+        <thead>
+          <tr>
+            <th>Status</th><th>Motivo</th><th>Chave NF-e</th><th>NF</th><th>Série</th><th>Emitente</th><th>CNPJ</th><th>Produto</th><th>NCM</th><th>Qtd</th><th>Valor</th><th>Arquivo</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script>
+let linhas=[]; let totalXmlProcessado=0;
+function txt(el,tag){const n=el?el.getElementsByTagName(tag)[0]:null;return n?(n.textContent||'').trim():''}
+function norm(v){return(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
+function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]))}
+function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
+function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
+async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;atualizarKPIs();renderizarTabela()}
+function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
+function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
+function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
+function limpar(){linhas=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('busca').value='';atualizarKPIs();renderizarTabela()}
+</script>
+</body>
+</html>
