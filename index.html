@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Validador DGR - Leitor XML NF-e</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background:#f4f6f8; color:#111; }
+  header { background:#003b7a; color:white; padding:18px 24px; }
+  main { padding:22px; max-width:1400px; margin:auto; }
+  .card { background:white; border-radius:8px; padding:18px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  h1 { margin:0; font-size:22px; }
+  h2 { margin-top:0; font-size:18px; }
+  input[type=file] { padding:10px; border:1px solid #ccc; border-radius:6px; background:white; width:100%; box-sizing:border-box; }
+  textarea { width:100%; height:110px; box-sizing:border-box; font-family:Consolas, monospace; padding:10px; }
+  button { background:#0077c8; color:white; border:0; border-radius:5px; padding:10px 16px; cursor:pointer; margin-right:8px; }
+  button.secondary { background:#555; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .kpi { padding:14px; border-radius:8px; background:#eef3f8; }
+  .kpi strong { display:block; font-size:24px; margin-top:4px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border:1px solid #ddd; padding:7px; vertical-align:top; }
+  th { background:#003b7a; color:white; position:sticky; top:0; }
+  .bloquear { background:#ffd6d6; font-weight:bold; }
+  .validar { background:#fff1bf; font-weight:bold; }
+  .liberado { background:#dff3df; font-weight:bold; }
+  .muted { color:#666; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Validador DGR - Leitor de XML NF-e</h1>
+</header>
+<main>
+  <section class="card">
+    <h2>1. Selecionar XMLs</h2>
+    <p class="muted">Extraia o ZIP baixado no portal e selecione todos os arquivos .xml da pasta.</p>
+    <input id="fileInput" type="file" accept=".xml,text/xml" multiple />
+    <br><br>
+    <button onclick="processarArquivos()">Analisar XMLs</button>
+    <button class="secondary" onclick="limpar()">Limpar</button>
+    <button onclick="exportarCSV()">Exportar CSV</button>
+  </section>
+
+  <section class="card">
+    <h2>2. Regras de alerta DGR</h2>
+    <p class="muted">Uma regra por linha. O sistema pesquisa na descrição do produto e no NCM.</p>
+    <textarea id="regras">LITIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
+LÍTIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
+BATERIA|VALIDAR|Produto com bateria - validar classificação
+AEROSOL|BLOQUEAR|Aerossol / inflamável ou pressurizado
+SPRAY|VALIDAR|Spray - validar composição
+PERFUME|VALIDAR|Perfume/fragrância - validar inflamável
+COLONIA|VALIDAR|Colônia/fragrância - validar inflamável
+TINTA|VALIDAR|Tinta - validar composição
+VERNIZ|VALIDAR|Verniz - validar inflamável
+SOLVENTE|BLOQUEAR|Solvente - possível inflamável
+INFLAMAVEL|BLOQUEAR|Descrição indica inflamável
+INFLAMÁVEL|BLOQUEAR|Descrição indica inflamável
+ACIDO|BLOQUEAR|Ácido - possível DGR
+ÁCIDO|BLOQUEAR|Ácido - possível DGR
+GAS|BLOQUEAR|Gás/cilindro - possível DGR
+GÁS|BLOQUEAR|Gás/cilindro - possível DGR
+CILINDRO|VALIDAR|Cilindro - validar conteúdo
+QUIMICO|VALIDAR|Produto químico - validar FISPQ
+QUÍMICO|VALIDAR|Produto químico - validar FISPQ
+INSETICIDA|BLOQUEAR|Inseticida/pesticida - possível DGR
+PESTICIDA|BLOQUEAR|Pesticida - possível DGR
+850760|VALIDAR|NCM comum de bateria de lítio - validar
+330300|VALIDAR|NCM perfume/fragrância - validar inflamável</textarea>
+  </section>
+
+  <section class="card">
+    <h2>3. Resumo</h2>
+    <div class="kpis">
+      <div class="kpi">XMLs lidos<strong id="kpiXml">0</strong></div>
+      <div class="kpi">Itens<strong id="kpiItens">0</strong></div>
+      <div class="kpi">Bloquear<strong id="kpiBloq">0</strong></div>
+      <div class="kpi">Validar<strong id="kpiVal">0</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4. Resultado</h2>
+    <div style="overflow:auto; max-height:520px;">
+      <table id="resultado">
+        <thead>
+          <tr>
+            <th>Status</th><th>Motivo</th><th>Chave NF-e</th><th>NF</th><th>Série</th><th>Emitente</th><th>CNPJ Emitente</th><th>Produto</th><th>NCM</th><th>Qtd</th><th>Valor</th><th>Arquivo</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script>
+let linhas = [];
+function txt(el, tag) {
+  const n = el.getElementsByTagName(tag)[0];
+  return n ? (n.textContent || '').trim() : '';
+}
+function norm(v) {
+  return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+}
+function getRegras() {
+  return document.getElementById('regras').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const p = l.split('|');
+    return {termo: norm(p[0] || ''), status: (p[1] || 'VALIDAR').toUpperCase(), motivo: p[2] || p[0]};
+  });
+}
+function classificar(desc, ncm, regras) {
+  const alvo = norm(desc + ' ' + ncm);
+  let achados = [];
+  let status = 'LIBERADO';
+  for (const r of regras) {
+    if (r.termo && alvo.includes(r.termo)) {
+      achados.push(r.motivo);
+      if (r.status === 'BLOQUEAR') status = 'BLOQUEAR';
+      else if (status !== 'BLOQUEAR') status = 'VALIDAR';
+    }
+  }
+  return {status, motivo: achados.join('; ') || 'Sem regra crítica identificada'};
+}
+async function processarArquivos() {
+  linhas = [];
+  const files = [...document.getElementById('fileInput').files];
+  const regras = getRegras();
+  for (const file of files) {
+    const text = await file.text();
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    const inf = xml.getElementsByTagName('infNFe')[0];
+    const ide = xml.getElementsByTagName('ide')[0];
+    const emit = xml.getElementsByTagName('emit')[0];
+    const chave = inf ? (inf.getAttribute('Id') || '').replace('NFe','') : '';
+    const nf = ide ? txt(ide, 'nNF') : '';
+    const serie = ide ? txt(ide, 'serie') : '';
+    const emitente = emit ? txt(emit, 'xNome') : '';
+    const cnpjEmit = emit ? txt(emit, 'CNPJ') : '';
+    const dets = xml.getElementsByTagName('det');
+    for (const det of dets) {
+      const prod = det.getElementsByTagName('prod')[0];
+      if (!prod) continue;
+      const descricao = txt(prod, 'xProd');
+      const ncm = txt(prod, 'NCM');
+      const qtd = txt(prod, 'qCom');
+      const valor = txt(prod, 'vProd');
+      const c = classificar(descricao, ncm, regras);
+      linhas.push({status:c.status, motivo:c.motivo, chave, nf, serie, emitente, cnpjEmit, descricao, ncm, qtd, valor, arquivo:file.name});
+    }
+  }
+  renderizar(files.length);
+}
+function renderizar(totalXml) {
+  const tb = document.querySelector('#resultado tbody');
+  tb.innerHTML = '';
+  for (const l of linhas) {
+    const tr = document.createElement('tr');
+    const cls = l.status === 'BLOQUEAR' ? 'bloquear' : l.status === 'VALIDAR' ? 'validar' : 'liberado';
+    tr.innerHTML = `<td class="${cls}">${l.status}</td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td>${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;
+    tb.appendChild(tr);
+  }
+  document.getElementById('kpiXml').textContent = totalXml;
+  document.getElementById('kpiItens').textContent = linhas.length;
+  document.getElementById('kpiBloq').textContent = linhas.filter(x=>x.status==='BLOQUEAR').length;
+  document.getElementById('kpiVal').textContent = linhas.filter(x=>x.status==='VALIDAR').length;
+}
+function esc(v){ return String(v || '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
+function exportarCSV() {
+  if (!linhas.length) { alert('Analise os XMLs primeiro.'); return; }
+  const headers = ['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];
+  const rows = linhas.map(l => [l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);
+  const csv = [headers, ...rows].map(r => r.map(c => '"' + String(c ?? '').replace(/"/g,'""') + '"').join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'resultado_dgr_xml.csv';
+  a.click();
+}
+function limpar(){ linhas=[]; document.querySelector('#resultado tbody').innerHTML=''; renderizar(0); document.getElementById('fileInput').value=''; }
+</script>
+</body>
+</html>
