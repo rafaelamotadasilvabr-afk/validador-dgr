@@ -66,44 +66,44 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
     <p class="muted">Formato: <b>TERMO|STATUS|MOTIVO</b>. Uma regra por linha. O sistema pesquisa na descrição do produto e no NCM.</p>
     <textarea id="regras">LITIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
 LÍTIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
-BATERIA|VALIDAR|Produto com bateria - validar classificação
+BATERIA|BLOQUEAR|Produto com bateria - validar classificação
 AEROSOL|BLOQUEAR|Aerossol / inflamável ou pressurizado
 AEROSSOL|BLOQUEAR|Aerossol / inflamável ou pressurizado
-SPRAY|VALIDAR|Spray - validar composição
-PERFUME|VALIDAR|Perfume/fragrância - validar inflamável
-PERFUME DE AMBIENTE|VALIDAR|Perfume de ambiente/aromatizador - validar inflamável
-AROMATIZADOR|VALIDAR|Aromatizador de ambiente - validar composição/inflamável
-HOME SPRAY|VALIDAR|Perfume de ambiente em spray - validar composição
-DIFUSOR|VALIDAR|Difusor/perfume de ambiente - validar composição
-ESSENCIA|VALIDAR|Essência/fragrância - validar inflamável
-ESSÊNCIA|VALIDAR|Essência/fragrância - validar inflamável
-COLONIA|VALIDAR|Colônia/fragrância - validar inflamável
-COLÔNIA|VALIDAR|Colônia/fragrância - validar inflamável
-BATOM|VALIDAR|Cosmético - verificar composição e forma de apresentação
-LIPSTICK|VALIDAR|Cosmético - verificar composição
-GLOSS|VALIDAR|Cosmético - verificar composição
-LIPGLOSS|VALIDAR|Cosmético - verificar composição
-LIP GLOSS|VALIDAR|Cosmético - verificar composição
-LIPTINT|VALIDAR|Cosmético - verificar composição
-LIP TINT|VALIDAR|Cosmético - verificar composição
-PRIMER|VALIDAR|Cosmético - verificar composição
-BASE|VALIDAR|Cosmético - verificar composição
-CORRETIVO|VALIDAR|Cosmético - verificar composição
-PO COMPACTO|VALIDAR|Cosmético - verificar composição
-PÓ COMPACTO|VALIDAR|Cosmético - verificar composição
-BLUSH|VALIDAR|Cosmético - verificar composição
-ILUMINADOR|VALIDAR|Cosmético - verificar composição
-MASCARA DE CILIOS|VALIDAR|Cosmético - verificar composição
-MÁSCARA DE CÍLIOS|VALIDAR|Cosmético - verificar composição
-DELINEADOR|VALIDAR|Cosmético - verificar composição
-MAQUIAGEM|VALIDAR|Cosmético - verificar composição
-COSMETICO|VALIDAR|Produto cosmético - verificar composição
-COSMÉTICO|VALIDAR|Produto cosmético - verificar composição
-ESMALTE|VALIDAR|Cosmético - possível inflamável
+SPRAY|BLOQUEAR|Spray - validar composição
+PERFUME|BLOQUEAR|Perfume/fragrância - validar inflamável
+PERFUME DE AMBIENTE|BLOQUEAR|Perfume de ambiente/aromatizador - validar inflamável
+AROMATIZADOR|BLOQUEAR|Aromatizador de ambiente - validar composição/inflamável
+HOME SPRAY|BLOQUEAR|Perfume de ambiente em spray - validar composição
+DIFUSOR|BLOQUEAR|Difusor/perfume de ambiente - validar composição
+ESSENCIA|BLOQUEAR|Essência/fragrância - validar inflamável
+ESSÊNCIA|BLOQUEAR|Essência/fragrância - validar inflamável
+COLONIA|BLOQUEAR|Colônia/fragrância - validar inflamável
+COLÔNIA|BLOQUEAR|Colônia/fragrância - validar inflamável
+BATOM|BLOQUEAR|Cosmético - verificar composição e forma de apresentação
+LIPSTICK|BLOQUEAR|Cosmético - verificar composição
+GLOSS|BLOQUEAR|Cosmético - verificar composição
+LIPGLOSS|BLOQUEAR|Cosmético - verificar composição
+LIP GLOSS|BLOQUEAR|Cosmético - verificar composição
+LIPTINT|BLOQUEAR|Cosmético - verificar composição
+LIP TINT|BLOQUEAR|Cosmético - verificar composição
+PRIMER|BLOQUEAR|Cosmético - verificar composição
+BASE|BLOQUEAR|Cosmético - verificar composição
+CORRETIVO|BLOQUEAR|Cosmético - verificar composição
+PO COMPACTO|BLOQUEAR|Cosmético - verificar composição
+PÓ COMPACTO|BLOQUEAR|Cosmético - verificar composição
+BLUSH|BLOQUEAR|Cosmético - verificar composição
+ILUMINADOR|BLOQUEAR|Cosmético - verificar composição
+MASCARA DE CILIOS|BLOQUEAR|Cosmético - verificar composição
+MÁSCARA DE CÍLIOS|BLOQUEAR|Cosmético - verificar composição
+DELINEADOR|BLOQUEAR|Cosmético - verificar composição
+MAQUIAGEM|BLOQUEAR|Cosmético - verificar composição
+COSMETICO|BLOQUEAR|Produto cosmético - verificar composição
+COSMÉTICO|BLOQUEAR|Produto cosmético - verificar composição
+ESMALTE|BLOQUEAR|Cosmético - possível inflamável
 REMOVEDOR DE ESMALTE|BLOQUEAR|Possível líquido inflamável
 ACETONA|BLOQUEAR|Líquido inflamável
-TINTA|VALIDAR|Tinta - validar composição
-VERNIZ|VALIDAR|Verniz - validar inflamável
+TINTA|BLOQUEAR|Tinta - validar composição
+VERNIZ|BLOQUEAR|Verniz - validar inflamável
 SOLVENTE|BLOQUEAR|Solvente - possível inflamável
 INFLAMAVEL|BLOQUEAR|Descrição indica inflamável
 INFLAMÁVEL|BLOQUEAR|Descrição indica inflamável
@@ -111,13 +111,13 @@ ACIDO|BLOQUEAR|Ácido - possível DGR
 ÁCIDO|BLOQUEAR|Ácido - possível DGR
 GAS|BLOQUEAR|Gás/cilindro - possível DGR
 GÁS|BLOQUEAR|Gás/cilindro - possível DGR
-CILINDRO|VALIDAR|Cilindro - validar conteúdo
-QUIMICO|VALIDAR|Produto químico - validar FISPQ
-QUÍMICO|VALIDAR|Produto químico - validar FISPQ
+CILINDRO|BLOQUEAR|Cilindro - validar conteúdo
+QUIMICO|BLOQUEAR|Produto químico - validar FISPQ
+QUÍMICO|BLOQUEAR|Produto químico - validar FISPQ
 INSETICIDA|BLOQUEAR|Inseticida/pesticida - possível DGR
 PESTICIDA|BLOQUEAR|Pesticida - possível DGR
-850760|VALIDAR|NCM comum de bateria de lítio - validar
-330300|VALIDAR|NCM perfume/fragrância - validar inflamável</textarea>
+BALM|BLOQUEAR|Cosmético - possível inflamável
+330300|BLOQUEAR|NCM perfume/fragrância - validar inflamável</textarea>
   </section>
 
   <section class="card">
