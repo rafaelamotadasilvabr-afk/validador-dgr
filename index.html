@@ -522,6 +522,16 @@ MAKE UP |BLOQUEAR|Maquiagem - possível DGR
       </table>
     </div>
   </section>
+
+<section class="card" id="painelProtocolos">
+  <h2>Protocolos de devolução DGR por cliente</h2>
+  <p class="muted">Todos os itens com status <strong>BLOQUEAR</strong> entram obrigatoriamente no protocolo do emitente. Itens <strong>VALIDAR</strong> podem ser incluídos manualmente. Confira AWBs, volumes e fundamento antes de formalizar a devolução.</p>
+  <div class="actions">
+    <button class="primary" onclick="imprimirProtocolos()">Imprimir / salvar PDF</button>
+    <button class="dark" onclick="exportarProtocolosCSV()">Exportar protocolos CSV</button>
+  </div>
+  <div id="listaProtocolos" style="margin-top:16px"><p class="muted">Analise XMLs para gerar os protocolos.</p></div>
+</section>
 </main>
 <script>
 let linhas=[]; let totalXmlProcessado=0;
@@ -530,11 +540,60 @@ function norm(v){return(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').t
 function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]))}
 function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;atualizarKPIs();renderizarTabela()}
+async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
-function limpar(){linhas=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('busca').value='';atualizarKPIs();renderizarTabela()}
+function limpar(){linhas=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
+
+const protocoloCampos = new Map();
+const protocoloOpcionais = new Set();
+function protocoloId(l){return [l.chave,l.nf,l.cnpjEmit,l.descricao,l.arquivo,l.itemIndice??''].join('|')}
+function protocoloIncluido(l){return l.status==='BLOQUEAR'||(l.status==='VALIDAR'&&protocoloOpcionais.has(protocoloId(l)))}
+function protocoloItens(){return linhas.filter(protocoloIncluido)}
+function protocoloGrupo(){const grupos=new Map();for(const l of protocoloItens()){const id=(l.cnpjEmit||l.emitente||'SEM_CNPJ').replace(/\D/g,'')||l.emitente||'SEM_CNPJ';if(!grupos.has(id))grupos.set(id,{cliente:l.emitente||'Emitente não identificado',cnpj:l.cnpjEmit||'',itens:[]});grupos.get(id).itens.push(l)}return [...grupos.entries()]}
+function protocoloCampo(id,campo,valor){const atual=protocoloCampos.get(id)||{};atual[campo]=valor;protocoloCampos.set(id,atual)}
+function protocoloValor(id,campo){return protocoloCampos.get(id)?.[campo]||''}
+function protocoloMotivo(l){return 'DEVOLUÇÃO POR RESTRIÇÃO DGR (TRIAGEM): '+l.descricao+'. Motivo identificado: '+l.motivo+'. Sujeito à conferência operacional e documentação aplicável.'}
+function renderizarProtocolos(){
+  const el=document.getElementById('listaProtocolos');if(!el)return;
+  const opcionais=linhas.filter(l=>l.status==='VALIDAR');
+  const grupos=protocoloGrupo();
+  let html='';
+  if(opcionais.length)html+='<h3 style="font-size:14px">Itens em validação (inclusão opcional)</h3>'+opcionais.map(l=>{
+    const id=protocoloId(l);return '<label style="display:block;margin:8px 0"><input type="checkbox" data-popt="'+esc(id)+'" '+(protocoloOpcionais.has(id)?'checked':'')+'> NF '+esc(l.nf)+' — '+esc(l.emitente)+' — '+esc(l.descricao)+'</label>'
+  }).join('');
+  if(!grupos.length)html+='<p class="muted">Nenhum item selecionado para protocolo. Produtos BLOQUEAR aparecerão automaticamente após a análise.</p>';
+  for(const [id,g] of grupos){
+    const fields=protocoloCampos.get(id)||{};
+    html+='<div style="border:1px solid var(--borda);border-radius:12px;padding:16px;margin:16px 0;background:#FAFCFE"><h3 style="margin:0 0 8px;font-size:16px">'+esc(g.cliente)+'</h3><p class="muted">CNPJ: '+esc(g.cnpj)+' | Itens: '+g.itens.length+' | Bloqueados: '+g.itens.filter(x=>x.status==='BLOQUEAR').length+'</p>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0">';
+    for(const [nome,rotulo] of [['awbOriginal','AWB primitiva'],['awbDevolucao','AWB de devolução'],['pedido','Pedido'],['volumes','Volumes'],['destinatario','Destinatário'],['data','Data da devolução']]){
+      html+='<label class="small">'+rotulo+'<input data-pgrupo="'+esc(id)+'" data-pcampo="'+nome+'" value="'+esc(fields[nome]||'')+'" '+(nome==='data'?'type="date"':'type="text"')+' style="display:block;width:100%;padding:8px;margin-top:4px;border:1px solid var(--borda);border-radius:6px"></label>'
+    }
+    html+='</div><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Status</th><th>NF</th><th>Produto</th><th>Qtd</th><th>Motivo descritivo (editável)</th></tr></thead><tbody>';
+    for(const l of g.itens){const item=protocoloId(l);const motivo=protocoloValor(item,'motivo')||protocoloMotivo(l);html+='<tr><td>'+esc(l.status)+'</td><td>'+esc(l.nf)+'</td><td class="produto">'+esc(l.descricao)+'</td><td>'+esc(l.qtd)+'</td><td><textarea data-pgrupo="'+esc(item)+'" data-pcampo="motivo" style="min-height:82px;min-width:250px">'+esc(motivo)+'</textarea></td></tr>'}
+    html+='</tbody></table></div></div>';
+  }
+  el.innerHTML=html;
+  el.querySelectorAll('[data-popt]').forEach(e=>e.addEventListener('change',()=>{if(e.checked)protocoloOpcionais.add(e.dataset.popt);else protocoloOpcionais.delete(e.dataset.popt);renderizarProtocolos()}));
+  el.querySelectorAll('[data-pcampo]').forEach(e=>e.addEventListener('input',()=>protocoloCampo(e.dataset.pgrupo,e.dataset.pcampo,e.value)));
+}
+function protocoloCsvCampo(s){return '"'+String(s??'').replace(/"/g,'""')+'"'}
+function exportarProtocolosCSV(){
+  const grupos=protocoloGrupo();if(!grupos.length){alert('Não há itens para o protocolo.');return}
+  const rows=[['Cliente','CNPJ','NF','Chave NF-e','AWB Primitiva','AWB Devolução','Pedido','Volumes','Destinatário','Data','Produto','Quantidade','Status','Motivo da devolução']];
+  for(const [id,g] of grupos){const c=protocoloCampos.get(id)||{};for(const l of g.itens)rows.push([g.cliente,g.cnpj,l.nf,l.chave,c.awbOriginal,c.awbDevolucao,c.pedido,c.volumes,c.destinatario,c.data,l.descricao,l.qtd,l.status,protocoloValor(protocoloId(l),'motivo')||protocoloMotivo(l)])}
+  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(protocoloCsvCampo).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='protocolos_devolucao_dgr.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+function imprimirProtocolos(){
+ const grupos=protocoloGrupo();if(!grupos.length){alert('Não há itens para protocolo.');return}
+ const doc=grupos.map(([id,g])=>{const c=protocoloCampos.get(id)||{};return '<section style="break-after:page"><h2>PROTOCOLO DE DEVOLUÇÃO — DGR</h2><p><b>Cliente:</b> '+esc(g.cliente)+' <b>CNPJ:</b> '+esc(g.cnpj)+'</p><p><b>AWB primitiva:</b> '+esc(c.awbOriginal)+' &nbsp; <b>AWB devolução:</b> '+esc(c.awbDevolucao)+' &nbsp; <b>Pedido:</b> '+esc(c.pedido)+'</p><p><b>Destinatário:</b> '+esc(c.destinatario)+' &nbsp; <b>Volumes:</b> '+esc(c.volumes)+' &nbsp; <b>Data:</b> '+esc(c.data)+'</p><table><thead><tr><th>NF</th><th>Produto</th><th>Qtd</th><th>Status</th><th>Descrição do motivo</th></tr></thead><tbody>'+g.itens.map(l=>'<tr><td>'+esc(l.nf)+'</td><td>'+esc(l.descricao)+'</td><td>'+esc(l.qtd)+'</td><td>'+esc(l.status)+'</td><td>'+esc(protocoloValor(protocoloId(l),'motivo')||protocoloMotivo(l))+'</td></tr>').join('')+'</tbody></table><p style="margin-top:40px">Recebido por: ______________________________ &nbsp; Data: ____/____/______</p><p>Observação: triagem automática; confirmar enquadramento DGR e autorização antes da devolução física.</p></section>'}).join('');
+ const w=window.open('','_blank');if(!w){alert('Permita pop-ups para imprimir o protocolo.');return}
+ w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Protocolos de devolução DGR</title><style>body{font:12px Arial;padding:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #888;padding:7px;text-align:left;vertical-align:top}th{background:#eee}@media print{section:last-child{break-after:auto}}</style></head><body>'+doc+'</body></html>');w.document.close();w.focus();w.print()
+}
+
 </script>
 </body>
 </html>
