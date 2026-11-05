@@ -546,60 +546,93 @@ function norm(v){return(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').t
 function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]))}
 function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
+async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
 function limpar(){linhas=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('arquivosSelecionados').textContent='Nenhum arquivo selecionado.';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
 
+
+/* Protocolos no layout operacional de sete colunas do modelo enviado. */
 const protocoloCampos = new Map();
 const protocoloOpcionais = new Set();
-function protocoloId(l){return [l.chave,l.nf,l.cnpjEmit,l.descricao,l.arquivo,l.itemIndice??''].join('|')}
+function protocoloId(l){return [l.chave,l.nf,l.cnpjEmit,l.arquivo,l.itemIndice??'',l.descricao].join('|')}
 function protocoloIncluido(l){return l.status==='BLOQUEAR'||(l.status==='VALIDAR'&&protocoloOpcionais.has(protocoloId(l)))}
 function protocoloItens(){return linhas.filter(protocoloIncluido)}
-function protocoloGrupo(){const grupos=new Map();for(const l of protocoloItens()){const id=(l.cnpjEmit||l.emitente||'SEM_CNPJ').replace(/\D/g,'')||l.emitente||'SEM_CNPJ';if(!grupos.has(id))grupos.set(id,{cliente:l.emitente||'Emitente não identificado',cnpj:l.cnpjEmit||'',itens:[]});grupos.get(id).itens.push(l)}return [...grupos.entries()]}
-function protocoloCampo(id,campo,valor){const atual=protocoloCampos.get(id)||{};atual[campo]=valor;protocoloCampos.set(id,atual)}
-function protocoloValor(id,campo){return protocoloCampos.get(id)?.[campo]||''}
-function protocoloMotivo(l){return 'DEVOLUÇÃO POR RESTRIÇÃO DGR (TRIAGEM): '+l.descricao+'. Motivo identificado: '+l.motivo+'. Sujeito à conferência operacional e documentação aplicável.'}
+function protocoloGrupo(){
+  const grupos=new Map();
+  for(const l of protocoloItens()){
+    const id=(l.cnpjEmit||'').replace(/\D/g,'')||l.emitente||'SEM_CNPJ';
+    if(!grupos.has(id))grupos.set(id,{cliente:l.emitente||'Emitente não identificado',cnpj:l.cnpjEmit||'',itens:[]});
+    grupos.get(id).itens.push(l)
+  }
+  return [...grupos.entries()]
+}
+function protocoloCampo(id,campo,valor){const c=protocoloCampos.get(id)||{};c[campo]=valor;protocoloCampos.set(id,c)}
+function protocoloValor(id,campo){return protocoloCampos.get(id)?.[campo]??''}
+function protocoloDados(l){
+  const id=protocoloId(l), c=protocoloCampos.get(id)||{};
+  return {
+    nf:c.nf??l.nf??'',
+    pedido:c.pedido??'-',
+    awbOriginal:c.awbOriginal??'',
+    awbDevolucao:c.awbDevolucao??'-',
+    quantidade:c.quantidade??l.qtd??'',
+    destinatario:c.destinatario??l.destinatario??'',
+    motivo:c.motivo??('DGR / '+l.descricao+' — '+l.motivo)
+  }
+}
+function protocoloData(id){return protocoloValor('grupo:'+id,'data')||new Date().toLocaleDateString('pt-BR')}
+function protocoloTotalVolumes(itens){return itens.reduce((acc,l)=>{const q=String(protocoloDados(l).quantidade).trim();return acc+(/^\d+\/\d+$/.test(q)?1:(Number(q.replace(',','.'))||0))},0)}
+function pInput(id,campo,val,largura='115px'){
+  return '<input data-pgrupo="'+esc(id)+'" data-pcampo="'+campo+'" value="'+esc(val)+'" style="width:'+largura+';max-width:100%;padding:7px;border:1px solid var(--borda);border-radius:6px" aria-label="'+esc(campo)+'">'
+}
 function renderizarProtocolos(){
   const el=document.getElementById('listaProtocolos');if(!el)return;
-  const opcionais=linhas.filter(l=>l.status==='VALIDAR');
-  const grupos=protocoloGrupo();
+  const opcionais=linhas.filter(l=>l.status==='VALIDAR'),grupos=protocoloGrupo();
   let html='';
-  if(opcionais.length)html+='<h3 style="font-size:14px">Itens em validação (inclusão opcional)</h3>'+opcionais.map(l=>{
-    const id=protocoloId(l);return '<label style="display:block;margin:8px 0"><input type="checkbox" data-popt="'+esc(id)+'" '+(protocoloOpcionais.has(id)?'checked':'')+'> NF '+esc(l.nf)+' — '+esc(l.emitente)+' — '+esc(l.descricao)+'</label>'
+  if(opcionais.length)html+='<h3 style="font-size:14px">Itens VALIDAR — inclusão opcional</h3>'+opcionais.map(l=>{
+    const id=protocoloId(l);
+    return '<label style="display:block;margin:8px 0"><input type="checkbox" data-popt="'+esc(id)+'" '+(protocoloOpcionais.has(id)?'checked':'')+'> NF '+esc(l.nf)+' — '+esc(l.emitente)+' — '+esc(l.descricao)+'</label>'
   }).join('');
-  if(!grupos.length)html+='<p class="muted">Nenhum item selecionado para protocolo. Produtos BLOQUEAR aparecerão automaticamente após a análise.</p>';
+  if(!grupos.length)html+='<p class="muted">Nenhum item para protocolo. Todos os itens BLOQUEAR entram automaticamente após analisar XMLs.</p>';
   for(const [id,g] of grupos){
-    const fields=protocoloCampos.get(id)||{};
-    html+='<div style="border:1px solid var(--borda);border-radius:12px;padding:16px;margin:16px 0;background:#FAFCFE"><h3 style="margin:0 0 8px;font-size:16px">'+esc(g.cliente)+'</h3><p class="muted">CNPJ: '+esc(g.cnpj)+' | Itens: '+g.itens.length+' | Bloqueados: '+g.itens.filter(x=>x.status==='BLOQUEAR').length+'</p>';
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0">';
-    for(const [nome,rotulo] of [['awbOriginal','AWB primitiva'],['awbDevolucao','AWB de devolução'],['pedido','Pedido'],['volumes','Volumes'],['destinatario','Destinatário'],['data','Data da devolução']]){
-      html+='<label class="small">'+rotulo+'<input data-pgrupo="'+esc(id)+'" data-pcampo="'+nome+'" value="'+esc(fields[nome]||'')+'" '+(nome==='data'?'type="date"':'type="text"')+' style="display:block;width:100%;padding:8px;margin-top:4px;border:1px solid var(--borda);border-radius:6px"></label>'
+    html+='<div style="border:1px solid var(--borda);border-radius:12px;padding:16px;margin:16px 0;background:#FAFCFE">';
+    html+='<h3 style="margin:0 0 8px;font-size:16px">Azul Logística | '+esc(g.cliente)+' | Protocolo de devolução</h3>';
+    html+='<p class="muted">CNPJ: '+esc(g.cnpj)+' — '+g.itens.length+' item(ns), sendo '+g.itens.filter(x=>x.status==='BLOQUEAR').length+' BLOQUEAR. Cada linha permite AWB diferente.</p>';
+    html+='<label class="small">Data do protocolo '+pInput('grupo:'+id,'data',protocoloData(id),'130px')+'</label>';
+    html+='<div class="table-wrap" style="max-height:none;margin-top:12px"><table><thead><tr><th>NF</th><th>PEDIDO</th><th>AWB PRIMITIVA</th><th>AWB DE DEVOLUÇÃO</th><th>QUANTIDADE</th><th>DESTINATÁRIO</th><th>MOTIVO DEVOLUÇÃO</th></tr></thead><tbody>';
+    for(const l of g.itens){
+      const item=protocoloId(l),d=protocoloDados(l);
+      html+='<tr>'+[['nf',d.nf,'100px'],['pedido',d.pedido,'100px'],['awbOriginal',d.awbOriginal,'115px'],['awbDevolucao',d.awbDevolucao,'115px'],['quantidade',d.quantidade,'75px'],['destinatario',d.destinatario,'180px']].map(([campo,v,w])=>'<td>'+pInput(item,campo,v,w)+'</td>').join('');
+      html+='<td><textarea data-pgrupo="'+esc(item)+'" data-pcampo="motivo" style="min-height:76px;min-width:290px">'+esc(d.motivo)+'</textarea><div class="muted" style="max-width:290px">'+esc(l.descricao)+'</div></td></tr>'
     }
-    html+='</div><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Status</th><th>NF</th><th>Produto</th><th>Qtd</th><th>Motivo descritivo (editável)</th></tr></thead><tbody>';
-    for(const l of g.itens){const item=protocoloId(l);const motivo=protocoloValor(item,'motivo')||protocoloMotivo(l);html+='<tr><td>'+esc(l.status)+'</td><td>'+esc(l.nf)+'</td><td class="produto">'+esc(l.descricao)+'</td><td>'+esc(l.qtd)+'</td><td><textarea data-pgrupo="'+esc(item)+'" data-pcampo="motivo" style="min-height:82px;min-width:250px">'+esc(motivo)+'</textarea></td></tr>'}
-    html+='</tbody></table></div></div>';
+    html+='</tbody></table></div>';
+    html+='<p style="font-weight:bold;margin-top:12px">TOTAL DE VOLUMES: <span data-total="'+esc(id)+'">'+protocoloTotalVolumes(g.itens)+'</span> <span class="muted small">(calculado pela quantidade; confira os volumes físicos)</span></p>';
+    html+='<p class="muted">Uso exclusivo do emissor:</p>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:10px">'+[['recebedor','NOME'],['documento','RG/CPF/RA'],['recebimento','DATA/HORA']].map(([key,label])=>'<label class="small">'+label+' '+pInput('grupo:'+id,key,protocoloValor('grupo:'+id,key),'190px')+'</label>').join('')+'</div></div>';
   }
   el.innerHTML=html;
   el.querySelectorAll('[data-popt]').forEach(e=>e.addEventListener('change',()=>{if(e.checked)protocoloOpcionais.add(e.dataset.popt);else protocoloOpcionais.delete(e.dataset.popt);renderizarProtocolos()}));
-  el.querySelectorAll('[data-pcampo]').forEach(e=>e.addEventListener('input',()=>protocoloCampo(e.dataset.pgrupo,e.dataset.pcampo,e.value)));
+  el.querySelectorAll('[data-pcampo]').forEach(e=>e.addEventListener('input',()=>{protocoloCampo(e.dataset.pgrupo,e.dataset.pcampo,e.value);if(e.dataset.pcampo==='quantidade'){for(const [gid,g] of protocoloGrupo()){const t=el.querySelector('[data-total="'+gid+'"]');if(t)t.textContent=protocoloTotalVolumes(g.itens)}}}));
 }
 function protocoloCsvCampo(s){return '"'+String(s??'').replace(/"/g,'""')+'"'}
 function exportarProtocolosCSV(){
-  const grupos=protocoloGrupo();if(!grupos.length){alert('Não há itens para o protocolo.');return}
-  const rows=[['Cliente','CNPJ','NF','Chave NF-e','AWB Primitiva','AWB Devolução','Pedido','Volumes','Destinatário','Data','Produto','Quantidade','Status','Motivo da devolução']];
-  for(const [id,g] of grupos){const c=protocoloCampos.get(id)||{};for(const l of g.itens)rows.push([g.cliente,g.cnpj,l.nf,l.chave,c.awbOriginal,c.awbDevolucao,c.pedido,c.volumes,c.destinatario,c.data,l.descricao,l.qtd,l.status,protocoloValor(protocoloId(l),'motivo')||protocoloMotivo(l)])}
-  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(protocoloCsvCampo).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='protocolos_devolucao_dgr.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+ const grupos=protocoloGrupo();if(!grupos.length){alert('Não há itens para o protocolo.');return}
+ const rows=[['CLIENTE','CNPJ','DATA','NF','PEDIDO','AWB PRIMITIVA','AWB DE DEVOLUÇÃO','QUANTIDADE','DESTINATÁRIO','MOTIVO DEVOLUÇÃO','STATUS']];
+ for(const [id,g] of grupos)for(const l of g.itens){const d=protocoloDados(l);rows.push([g.cliente,g.cnpj,protocoloData(id),d.nf,d.pedido,d.awbOriginal,d.awbDevolucao,d.quantidade,d.destinatario,d.motivo,l.status])}
+ const blob=new Blob(['\ufeff'+rows.map(r=>r.map(protocoloCsvCampo).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='protocolos_devolucao_dgr.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 function imprimirProtocolos(){
  const grupos=protocoloGrupo();if(!grupos.length){alert('Não há itens para protocolo.');return}
- const doc=grupos.map(([id,g])=>{const c=protocoloCampos.get(id)||{};return '<section style="break-after:page"><h2>PROTOCOLO DE DEVOLUÇÃO — DGR</h2><p><b>Cliente:</b> '+esc(g.cliente)+' <b>CNPJ:</b> '+esc(g.cnpj)+'</p><p><b>AWB primitiva:</b> '+esc(c.awbOriginal)+' &nbsp; <b>AWB devolução:</b> '+esc(c.awbDevolucao)+' &nbsp; <b>Pedido:</b> '+esc(c.pedido)+'</p><p><b>Destinatário:</b> '+esc(c.destinatario)+' &nbsp; <b>Volumes:</b> '+esc(c.volumes)+' &nbsp; <b>Data:</b> '+esc(c.data)+'</p><table><thead><tr><th>NF</th><th>Produto</th><th>Qtd</th><th>Status</th><th>Descrição do motivo</th></tr></thead><tbody>'+g.itens.map(l=>'<tr><td>'+esc(l.nf)+'</td><td>'+esc(l.descricao)+'</td><td>'+esc(l.qtd)+'</td><td>'+esc(l.status)+'</td><td>'+esc(protocoloValor(protocoloId(l),'motivo')||protocoloMotivo(l))+'</td></tr>').join('')+'</tbody></table><p style="margin-top:40px">Recebido por: ______________________________ &nbsp; Data: ____/____/______</p><p>Observação: triagem automática; confirmar enquadramento DGR e autorização antes da devolução física.</p></section>'}).join('');
+ const doc=grupos.map(([id,g])=>{
+  const tabela=g.itens.map(l=>{const d=protocoloDados(l);return '<tr>'+[d.nf,d.pedido,d.awbOriginal,d.awbDevolucao,d.quantidade,d.destinatario,d.motivo].map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>'}).join('');
+  return '<section class="protocolo"><table class="protocolo-tabela"><colgroup><col style="width:10%"><col style="width:10%"><col style="width:12%"><col style="width:14%"><col style="width:10%"><col style="width:17%"><col style="width:27%"></colgroup><thead><tr class="titulo"><th colspan="2">Azul Logística</th><th colspan="2">'+esc(g.cliente)+'</th><th colspan="3">Protocolo de devolução '+esc(protocoloData(id))+'</th></tr><tr>'+['NF','PEDIDO','AWB PRIMITIVA','AWB DE DEVOLUÇÃO','QUANTIDADE','DESTINATÁRIO','MOTIVO DEVOLUÇÃO'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+tabela+'<tr><td colspan="6" style="text-align:right;font-weight:bold">TOTAL DE VOLUMES:</td><td><b>'+esc(protocoloTotalVolumes(g.itens))+'</b></td></tr><tr><td colspan="7" class="subtitulo">Uso exclusivo do emissor:</td></tr><tr><td colspan="7">Destinatário/Recebedor</td></tr><tr><td colspan="2">NOME:</td><td colspan="5">'+esc(protocoloValor('grupo:'+id,'recebedor'))+'</td></tr><tr><td colspan="2">RG/CPF/RA:</td><td colspan="5">'+esc(protocoloValor('grupo:'+id,'documento'))+'</td></tr><tr><td colspan="2">DATA/HORA:</td><td colspan="5">'+esc(protocoloValor('grupo:'+id,'recebimento'))+'</td></tr></tbody></table></section>'
+ }).join('');
  const w=window.open('','_blank');if(!w){alert('Permita pop-ups para imprimir o protocolo.');return}
- w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Protocolos de devolução DGR</title><style>body{font:12px Arial;padding:24px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #888;padding:7px;text-align:left;vertical-align:top}th{background:#eee}@media print{section:last-child{break-after:auto}}</style></head><body>'+doc+'</body></html>');w.document.close();w.focus();w.print()
+ w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Protocolos de devolução DGR</title><style>@page{size:A4 landscape;margin:10mm}body{font:11px Arial;margin:0;color:#000}.protocolo{break-after:page}.protocolo:last-child{break-after:auto}.protocolo-tabela{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid #333;padding:7px 5px;vertical-align:middle;overflow-wrap:anywhere}th{background:#DCEBF6;text-align:center;font-weight:700}.titulo th{background:#003B71;color:white;font-size:14px;padding:12px 5px}.subtitulo{background:#E6E6E6;font-weight:bold;height:32px}</style></head><body>'+doc+'</body></html>');w.document.close();w.focus();w.print()
 }
-
 
 /* Importação de XMLs por clique ou arrastar e soltar (sem envio a servidor). */
 (function configurarArrastarSoltar(){
