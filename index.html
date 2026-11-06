@@ -43,6 +43,15 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
   <div class="grid">
     <section class="card">
       <h2>Selecionar XMLs</h2>
+      <div style="margin:0 0 16px">
+        <label for="clienteDGR" style="display:block;font-size:13px;font-weight:700;margin-bottom:7px">Cliente / regra de classificação</label>
+        <select id="clienteDGR" onchange="alterarClienteDGR()" style="width:100%;padding:12px;border:1px solid var(--borda);border-radius:10px;background:#fff;color:var(--texto)">
+          <option value="geral">Outros clientes — regras gerais DGR</option>
+          <option value="tania">Tânia Bulhões — somente os 370 produtos cadastrados</option>
+        </select>
+        <p id="avisoClienteDGR" class="muted" style="margin:8px 0 0">Selecione o cliente antes de carregar os XMLs ou ZIPs.</p>
+      </div>
+
       <p class="muted">Selecione ou arraste arquivos <b>.xml</b> ou <b>.zip</b> do Portal EDI. O ZIP é extraído automaticamente e os XMLs são analisados localmente no navegador.</p>
       <div class="upload" id="dropZone" role="button" tabindex="0" aria-label="Arraste arquivos XML ou pressione Enter para selecionar">
         <div style="text-align:center;pointer-events:none">
@@ -62,7 +71,7 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
 
     <section class="card alerta">
       <h2>Critério operacional</h2>
-      <p class="muted"><b>BLOQUEAR</b> indica forte indício de mercadoria restrita/DGR. <b>VALIDAR</b> exige conferência operacional antes do embarque. <b>LIBERADO</b> significa que nenhuma regra cadastrada foi encontrada.</p>
+      <p class="muted"><b>BLOQUEAR</b> indica forte indício de mercadoria restrita/DGR. <b>VALIDAR</b> exige conferência operacional antes do embarque. <b>LIBERADO</b> significa apenas que nenhuma regra aplicável foi encontrada. No modo Tânia Bulhões, itens fora do catálogo não são automaticamente enviados ao protocolo.</p>
       <p class="muted small">A classificação automática não substitui regra interna, FISPQ, declaração do embarcador ou validação formal quando aplicável.</p>
     </section>
   </div>
@@ -124,7 +133,9 @@ INSETICIDA|BLOQUEAR|Inseticida/pesticida - possível DGR
 PESTICIDA|BLOQUEAR|Pesticida - possível DGR
 BALM|BLOQUEAR|Maquiagem - possível DGR
 MAKE UP |BLOQUEAR|Maquiagem - possível DGR  
-003L00900002	COLÔNIA	1989 COLÔNIA PARA CABELO 30ML
+      
+330300|BLOQUEAR|NCM perfume/fragrância - validar inflamável</textarea>
+<textarea id="catalogoTania" hidden aria-hidden="true">003L00900002	COLÔNIA	1989 COLÔNIA PARA CABELO 30ML
 003L02800043	PERFUME	1989 EAU DE PARFUM 2ML
 003L02800056	PERFUME	1989 EAU DE PARFUM 2ML
 003002800010	PERFUME	1989 EAU DE PARFUM 2ML AMOSTRA CARTAO
@@ -493,9 +504,7 @@ MAKE UP |BLOQUEAR|Maquiagem - possível DGR
 003L02800078	PERFUME	VETIVER DEO COLONIA 10ML
 003L02800135	PERFUME	VETIVER DEO COLONIA 2ML  CJF
 003L02800107	PERFUME	VETIVER DEO COLONIA 30ML
-003L02800028	PERFUME	VETIVER DEO COLONIA 80ML
-      
-330300|BLOQUEAR|NCM perfume/fragrância - validar inflamável</textarea>
+003L02800028	PERFUME	VETIVER DEO COLONIA 80ML</textarea>
   </section>
 
   <section class="card">
@@ -546,8 +555,45 @@ function txt(el,tag){const n=el?el.getElementsByTagName(tag)[0]:null;return n?(n
 function norm(v){return(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]))}
 function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
+
+/* Catálogo específico da Tânia Bulhões: não utiliza palavras-chave nem NCM genérico. */
+function obterCatalogoTania(){
+ const linhasCatalogo=document.getElementById('catalogoTania').value.trim().split(/\r?\n/);
+ const porSKU=new Map(),porDescricao=new Map();
+ for(const linha of linhasCatalogo){
+  const partes=linha.split('\t');
+  if(partes.length<3)continue;
+  const [sku,categoria,...desc]=partes;
+  const item={sku:sku.trim().toUpperCase(),categoria:categoria.trim(),descricao:desc.join('\t').trim()};
+  porSKU.set(item.sku,item);
+  const chave=norm(item.descricao).replace(/\s+/g,' ').trim();
+  if(!porDescricao.has(chave))porDescricao.set(chave,item);
+ }
+ return {porSKU,porDescricao};
+}
+const catalogoTania=obterCatalogoTania();
+function classificarTania(sku,descricao){
+ const codigo=String(sku||'').trim().toUpperCase();
+ const desc=norm(descricao).replace(/\s+/g,' ').trim();
+ const encontrado=catalogoTania.porSKU.get(codigo)||catalogoTania.porDescricao.get(desc);
+ if(!encontrado){
+  return {status:'LIBERADO',motivo:'Fora da lista DGR cadastrada para Tânia Bulhões — não incluir no protocolo por esta regra.'};
+ }
+ return {status:'BLOQUEAR',motivo:'Produto cadastrado na lista de restrição DGR da Tânia Bulhões. SKU: '+encontrado.sku+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Devolução conforme regra operacional do cliente, sujeita à conferência.'};
+}
+function alterarClienteDGR(){
+ const cliente=document.getElementById('clienteDGR').value;
+ const aviso=document.getElementById('avisoClienteDGR');
+ const regras=document.getElementById('regras');
+ if(aviso)aviso.textContent=cliente==='tania'
+  ? 'Tânia Bulhões: somente SKUs ou descrições exatas da lista de 370 itens recebem BLOQUEAR. Itens não cadastrados ficam fora do protocolo automático. Não substitui avaliação formal de artigos perigosos.'
+  : 'Outros clientes: classificação pelas regras gerais configuradas abaixo.';
+ if(regras)regras.closest('.card').style.display=cliente==='tania'?'none':'';
+ if(arquivosXMLAtuais.length && !analisandoXML)processarArquivos();
+}
+
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
+async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const sku=txt(prod,'cProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=document.getElementById('clienteDGR').value==='tania'?classificarTania(sku,descricao):classificar(descricao,ncm,regras);linhas.push({sku,status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
