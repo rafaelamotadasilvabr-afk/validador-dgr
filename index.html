@@ -762,7 +762,8 @@ NOR	002L01200004	PERFUMARIA	PERFUMARIA CASA LÍQUIDA	DETERGENTE	DETERGENTE CHEF 
 DG	003L02800078	PERFUMARIA	PERFUMARIA PESSOAL LÍQUIDA	PERFUME	VETIVER DEO COLONIA 10ML
 DG	003L02800135	PERFUMARIA	PERFUMARIA PESSOAL LÍQUIDA	PERFUME	VETIVER DEO COLONIA 2ML    CJF
 DG	003L02800107	PERFUMARIA	PERFUMARIA PESSOAL LÍQUIDA	PERFUME	VETIVER DEO COLONIA 30ML
-DG	003L02800028	PERFUMARIA	PERFUMARIA PESSOAL LÍQUIDA	PERFUME	VETIVER DEO COLONIA 80ML</textarea>
+DG	003L02800028	PERFUMARIA	PERFUMARIA PESSOAL LÍQUIDA	PERFUME	VETIVER DEO COLONIA 80ML
+NOR		PERFUMARIA	PERFUMARIA CASA	DIFUSORES	DIFUSOR PARA CARRO TANIA BULHO</textarea>
   </section>
 
   <section class="card">
@@ -824,9 +825,9 @@ function obterCatalogoTania(){
  for(const linha of texto.split(/\r?\n/)){
   if(!linha.trim())continue;
   const [status,sku,grupo,subgrupo,categoria,...descricao]=linha.split('\t');
-  if(!['DG','NOR'].includes(status)||!sku)continue;
-  const item={status,sku:sku.trim().toUpperCase(),grupo,subgrupo,categoria,descricao:descricao.join('\t').trim()};
-  porCodigo.set(item.sku,item);
+  if(!['DG','NOR'].includes(status))continue;
+  const item={status,sku:(sku||'').trim().toUpperCase(),grupo,subgrupo,categoria,descricao:descricao.join('\t').trim()};
+  if(item.sku)porCodigo.set(item.sku,item);
   const chave=chaveDescricaoTania(item.descricao);
   if(chave){
    if(!porDescricao.has(chave))porDescricao.set(chave,[]);
