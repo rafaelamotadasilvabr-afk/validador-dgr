@@ -47,7 +47,7 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
       <div class="upload" id="dropZone" role="button" tabindex="0" aria-label="Arraste arquivos XML ou pressione Enter para selecionar">
         <div style="text-align:center;pointer-events:none">
           <div style="font-size:30px;margin-bottom:6px" aria-hidden="true">📂</div>
-          <strong style="display:block;font-size:16px;color:var(--azul)">Arraste e solte seus arquivos XML aqui</strong>
+          <strong style="display:block;font-size:16px;color:var(--azul)">Arraste e solte seus arquivos XML aqui — análise automática</strong>
           <p class="muted" style="margin:7px 0 12px">Ou clique nesta área para selecionar um ou vários XMLs</p>
         </div>
         <input id="fileInput" type="file" accept=".xml,text/xml" multiple style="max-width:100%;cursor:pointer" aria-label="Selecionar arquivos XML" />
@@ -546,11 +546,11 @@ function norm(v){return(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').t
 function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]))}
 function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){linhas=[];const files=[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
+async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=classificar(descricao,ncm,regras);linhas.push({status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.ncm)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','NCM','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.ncm,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
-function limpar(){linhas=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('arquivosSelecionados').textContent='Nenhum arquivo selecionado.';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
+function limpar(){linhas=[];arquivosXMLAtuais=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('arquivosSelecionados').textContent='Nenhum arquivo selecionado.';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
 
 
 /* Protocolos no layout operacional de sete colunas do modelo enviado. */
@@ -635,34 +635,40 @@ function imprimirProtocolos(){
  w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Protocolos de devolução DGR</title><style>@page{size:A4 landscape;margin:9mm}*{box-sizing:border-box}body{font:11px Arial,sans-serif;margin:0;color:#111}.protocolo{break-after:page}.protocolo:last-child{break-after:auto}.protocolo-tabela{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:2px solid #323232;padding:5px 4px;vertical-align:middle;overflow-wrap:anywhere;text-align:center;white-space:pre-wrap}thead tr:not(.titulo) th{background:#34465E;color:#fff;font-size:11px;font-weight:700;print-color-adjust:exact;-webkit-print-color-adjust:exact}.titulo th{background:#fff;color:#111;font-size:12px;font-weight:bold;height:49px;padding:5px}.titulo th.logo img{width:100%;max-width:205px;height:42px;object-fit:contain;vertical-align:middle}.protocolo-tabela tbody tr:not(.espaco) td{height:23px}.subtitulo{background:#34465E;color:#fff;text-align:left;font-weight:bold;print-color-adjust:exact;-webkit-print-color-adjust:exact}.espaco td{height:17px}.protocolo-tabela tbody tr:last-child td{height:30px}@media print{html,body{print-color-adjust:exact;-webkit-print-color-adjust:exact}thead{display:table-header-group}tr{break-inside:avoid}}</style></head><body>'+doc+'</body></html>');w.document.close();w.focus();const imgs=[...w.document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve}))).then(()=>{w.print()})
 }
 
-/* Importação de XMLs por clique ou arrastar e soltar (sem envio a servidor). */
+/* Entrada única para seleção e arrastar/soltar; análise inicia ao receber XML. */
+let arquivosXMLAtuais=[];
+let analisandoXML=false;
+async function receberArquivosXML(arquivos){
+ const aviso=document.getElementById('arquivosSelecionados');
+ const todos=Array.from(arquivos||[]);
+ const xmls=todos.filter(f=>/\.xml$/i.test(f.name));
+ const rejeitados=todos.filter(f=>!/\.xml$/i.test(f.name));
+ if(!xmls.length){
+  if(aviso)aviso.textContent=todos.some(f=>/\.zip$/i.test(f.name))?'Você arrastou um ZIP. Extraia o ZIP e solte os arquivos XML.':'Nenhum XML identificado. Selecione arquivos com extensão .xml.';
+  return;
+ }
+ arquivosXMLAtuais=xmls;
+ if(aviso)aviso.textContent=xmls.length+' XML(s) recebido(s). Analisando agora...'+(rejeitados.length?' '+rejeitados.length+' arquivo(s) ignorado(s).':'');
+ await processarArquivos();
+ if(aviso)aviso.textContent=xmls.length+' XML(s) analisado(s): '+xmls.map(f=>f.name).join(', ');
+}
 (function configurarArrastarSoltar(){
-  const zona=document.getElementById('dropZone');
-  const entrada=document.getElementById('fileInput');
-  const aviso=document.getElementById('arquivosSelecionados');
-  if(!zona||!entrada||!aviso)return;
-  const atualizarAviso=()=>{const arquivos=[...entrada.files];aviso.textContent=arquivos.length===0?'Nenhum arquivo selecionado.':arquivos.length===1?'1 XML selecionado: '+arquivos[0].name:arquivos.length+' XMLs selecionados: '+arquivos.map(f=>f.name).join(', ');};
-  zona.addEventListener('click',e=>{if(e.target!==entrada)entrada.click()});
-  zona.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===zona){e.preventDefault();entrada.click()}});
-  entrada.addEventListener('change',atualizarAviso);
-  let profundidade=0;
-  zona.addEventListener('dragenter',e=>{e.preventDefault();profundidade++;zona.classList.add('drag-over')});
-  zona.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';zona.classList.add('drag-over')});
-  zona.addEventListener('dragleave',e=>{e.preventDefault();profundidade=Math.max(0,profundidade-1);if(!profundidade)zona.classList.remove('drag-over')});
-  zona.addEventListener('drop',e=>{
-    e.preventDefault();profundidade=0;zona.classList.remove('drag-over');
-    const files=[...(e.dataTransfer?.files||[])];
-    const xmls=files.filter(f=>/\.xml$/i.test(f.name));
-    if(!xmls.length){aviso.textContent='Arquivo não aceito. Arraste arquivos .xml extraídos do ZIP.';return}
-    const transfer=new DataTransfer();for(const file of xmls)transfer.items.add(file);
-    entrada.files=transfer.files;
-    atualizarAviso();
-    if(xmls.length<files.length)aviso.textContent+=' ('+(files.length-xmls.length)+' arquivo(s) ignorado(s), formato diferente de XML.)';
-  });
-  ['dragenter','dragover','drop'].forEach(tipo=>document.addEventListener(tipo,e=>{if(!zona.contains(e.target))e.preventDefault()}));
-  atualizarAviso();
+ const zona=document.getElementById('dropZone'),entrada=document.getElementById('fileInput'),aviso=document.getElementById('arquivosSelecionados');
+ if(!zona||!entrada||!aviso)return;
+ zona.addEventListener('click',e=>{if(e.target!==entrada)entrada.click()});
+ zona.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===zona){e.preventDefault();entrada.click()}});
+ entrada.addEventListener('change',()=>receberArquivosXML(entrada.files));
+ let profundidade=0;
+ zona.addEventListener('dragenter',e=>{e.preventDefault();e.stopPropagation();profundidade++;zona.classList.add('drag-over')});
+ zona.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';zona.classList.add('drag-over')});
+ zona.addEventListener('dragleave',e=>{e.preventDefault();e.stopPropagation();profundidade=Math.max(0,profundidade-1);if(!profundidade)zona.classList.remove('drag-over')});
+ zona.addEventListener('drop',async e=>{
+  e.preventDefault();e.stopPropagation();profundidade=0;zona.classList.remove('drag-over');
+  await receberArquivosXML(e.dataTransfer&&e.dataTransfer.files);
+ });
+ document.addEventListener('dragover',e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files'))e.preventDefault()});
+ document.addEventListener('drop',e=>{if(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).includes('Files'))e.preventDefault()});
 })();
-
 </script>
 </body>
 </html>
