@@ -43,14 +43,14 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
   <div class="grid">
     <section class="card">
       <h2>Selecionar XMLs</h2>
-      <p class="muted">Selecione os arquivos <b>.xml</b> extraídos do ZIP baixado no Portal EDI. A leitura acontece localmente no navegador.</p>
+      <p class="muted">Selecione ou arraste arquivos <b>.xml</b> ou <b>.zip</b> do Portal EDI. O ZIP é extraído automaticamente e os XMLs são analisados localmente no navegador.</p>
       <div class="upload" id="dropZone" role="button" tabindex="0" aria-label="Arraste arquivos XML ou pressione Enter para selecionar">
         <div style="text-align:center;pointer-events:none">
           <div style="font-size:30px;margin-bottom:6px" aria-hidden="true">📂</div>
-          <strong style="display:block;font-size:16px;color:var(--azul)">Arraste e solte seus arquivos XML aqui — análise automática</strong>
-          <p class="muted" style="margin:7px 0 12px">Ou clique nesta área para selecionar um ou vários XMLs</p>
+          <strong style="display:block;font-size:16px;color:var(--azul)">Arraste e solte arquivos XML ou ZIP aqui — análise automática</strong>
+          <p class="muted" style="margin:7px 0 12px">Ou clique nesta área para selecionar XMLs ou ZIPs. XMLs dentro de subpastas também serão lidos.</p>
         </div>
-        <input id="fileInput" type="file" accept=".xml,text/xml" multiple style="max-width:100%;cursor:pointer" aria-label="Selecionar arquivos XML" />
+        <input id="fileInput" type="file" accept=".xml,.zip,text/xml,application/zip" multiple style="max-width:100%;cursor:pointer" aria-label="Selecionar arquivos XML" />
         <p id="arquivosSelecionados" class="muted" aria-live="polite" style="margin:10px 0 0">Nenhum arquivo selecionado.</p>
       </div>
       <div class="actions">
@@ -539,6 +539,7 @@ MAKE UP |BLOQUEAR|Maquiagem - possível DGR
   <div id="listaProtocolos" style="margin-top:16px"><p class="muted">Analise XMLs para gerar os protocolos.</p></div>
 </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 let linhas=[]; let totalXmlProcessado=0;
 function txt(el,tag){const n=el?el.getElementsByTagName(tag)[0]:null;return n?(n.textContent||'').trim():''}
@@ -641,17 +642,61 @@ let analisandoXML=false;
 async function receberArquivosXML(arquivos){
  const aviso=document.getElementById('arquivosSelecionados');
  const todos=Array.from(arquivos||[]);
- const xmls=todos.filter(f=>/\.xml$/i.test(f.name));
- const rejeitados=todos.filter(f=>!/\.xml$/i.test(f.name));
- if(!xmls.length){
-  if(aviso)aviso.textContent=todos.some(f=>/\.zip$/i.test(f.name))?'Você arrastou um ZIP. Extraia o ZIP e solte os arquivos XML.':'Nenhum XML identificado. Selecione arquivos com extensão .xml.';
-  return;
- }
- arquivosXMLAtuais=xmls;
- if(aviso)aviso.textContent=xmls.length+' XML(s) recebido(s). Analisando agora...'+(rejeitados.length?' '+rejeitados.length+' arquivo(s) ignorado(s).':'');
- await processarArquivos();
- if(aviso)aviso.textContent=xmls.length+' XML(s) analisado(s): '+xmls.map(f=>f.name).join(', ');
+ if(!todos.length)return;
+ if(analisandoXML || recebendoArquivos){if(aviso)aviso.textContent='Uma análise já está em andamento. Aguarde a conclusão.';return;}
+ recebendoArquivos=true;
+ const aceitos=todos.filter(f=>/\.(xml|zip)$/i.test(f.name));
+ const ignorados=todos.length-aceitos.length;
+ const xmls=[];
+ const problemas=[];
+ const limiteArquivos=1000, limitePorXML=10*1024*1024, limiteTotal=100*1024*1024;
+ let bytesAcumulados=0;
+ try{
+  if(aviso)aviso.textContent='Preparando '+aceitos.length+' arquivo(s) XML/ZIP...';
+  for(const file of aceitos){
+   if(/\.xml$/i.test(file.name)){
+    if(file.size>limitePorXML){problemas.push(file.name+': XML acima de 10 MB.');continue}
+    bytesAcumulados+=file.size;
+    if(bytesAcumulados>limiteTotal){problemas.push('Limite total de 100 MB de XMLs excedido.');break}
+    xmls.push(file);
+    continue;
+   }
+   if(typeof JSZip==='undefined'){
+    problemas.push('Leitor de ZIP indisponível. Recarregue a página com conexão à internet.');
+    continue;
+   }
+   try{
+    if(aviso)aviso.textContent='Extraindo ZIP: '+file.name+'...';
+    const zip=await JSZip.loadAsync(file);
+    const entradas=Object.values(zip.files).filter(e=>!e.dir&&/\.xml$/i.test(e.name));
+    if(!entradas.length){problemas.push(file.name+': nenhum XML encontrado.');continue}
+    if(entradas.length>limiteArquivos){problemas.push(file.name+': mais de 1000 XMLs.');continue}
+    for(const entrada of entradas){
+     if(xmls.length>=limiteArquivos){problemas.push('Limite de 1000 XMLs por análise atingido.');break}
+     const tamanho=entrada._data?.uncompressedSize;
+     if(typeof tamanho==='number' && tamanho>limitePorXML){problemas.push(entrada.name+': XML acima de 10 MB.');continue}
+     if(typeof tamanho==='number' && bytesAcumulados+tamanho>limiteTotal){problemas.push('Limite total de 100 MB de XMLs excedido.');break}
+     const conteudo=await entrada.async('uint8array');
+     if(conteudo.byteLength>limitePorXML||bytesAcumulados+conteudo.byteLength>limiteTotal){problemas.push(entrada.name+': tamanho excedido.');continue}
+     bytesAcumulados+=conteudo.byteLength;
+     xmls.push(new File([conteudo],file.name+'/'+entrada.name,{type:'text/xml'}));
+    }
+   }catch(e){problemas.push(file.name+': ZIP inválido, protegido por senha ou ilegível.');console.error('Falha na extração ZIP',file.name,e)}
+  }
+  if(!xmls.length){
+   if(aviso)aviso.textContent='Nenhum XML disponível para análise. '+(problemas.join(' ')||'Selecione arquivos .xml ou .zip.');
+   return;
+  }
+  arquivosXMLAtuais=xmls;
+  if(aviso)aviso.textContent=xmls.length+' XML(s) encontrados. Analisando...';
+  await processarArquivos();
+  if(aviso)aviso.textContent=xmls.length+' XML(s) processados de '+aceitos.length+' arquivo(s) enviado(s).'+(ignorados?' '+ignorados+' formato(s) ignorado(s).':'')+(problemas.length?' Atenção: '+problemas.join(' '):'');
+ }catch(e){
+  console.error('Falha ao receber XML/ZIP',e);
+  if(aviso)aviso.textContent='Erro no processamento: '+(e.message||'verifique os arquivos e tente novamente');
+ }finally{recebendoArquivos=false}
 }
+let recebendoArquivos=false;
 (function configurarArrastarSoltar(){
  const zona=document.getElementById('dropZone'),entrada=document.getElementById('fileInput'),aviso=document.getElementById('arquivosSelecionados');
  if(!zona||!entrada||!aviso)return;
