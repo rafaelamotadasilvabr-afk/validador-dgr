@@ -815,45 +815,58 @@ function esc(v){return String(v||'').replace(/[&<>\"]/g,s=>({'&':'&amp;','<':'&l
 function getRegras(){return document.getElementById('regras').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const p=l.split('|');return{termo:norm(p[0]||''),status:(p[1]||'VALIDAR').toUpperCase(),motivo:p[2]||p[0]}})}
 
 /* Catálogo específico da Tânia Bulhões: não utiliza palavras-chave nem NCM genérico. */
+function chaveDescricaoTania(v){
+ return norm(String(v||'').replace(/\u00a0/g,' ')).replace(/\s+/g,' ').trim();
+}
 function obterCatalogoTania(){
- const catalogo=new Map();
+ const porCodigo=new Map(),porDescricao=new Map();
  const texto=document.getElementById('catalogoTania')?.value||'';
  for(const linha of texto.split(/\r?\n/)){
   if(!linha.trim())continue;
   const [status,sku,grupo,subgrupo,categoria,...descricao]=linha.split('\t');
   if(!['DG','NOR'].includes(status)||!sku)continue;
-  catalogo.set(sku.trim().toUpperCase(),{status,sku:sku.trim().toUpperCase(),grupo,subgrupo,categoria,descricao:descricao.join('\t')});
+  const item={status,sku:sku.trim().toUpperCase(),grupo,subgrupo,categoria,descricao:descricao.join('\t').trim()};
+  porCodigo.set(item.sku,item);
+  const chave=chaveDescricaoTania(item.descricao);
+  if(chave){
+   if(!porDescricao.has(chave))porDescricao.set(chave,[]);
+   porDescricao.get(chave).push(item);
+  }
  }
- return catalogo;
+ return {porCodigo,porDescricao};
 }
 const catalogoTania=obterCatalogoTania();
-function classificarTania(sku){
+function classificarTania(sku,descricao){
  const codigo=String(sku||'').trim().toUpperCase();
- const encontrado=catalogoTania.get(codigo);
+ const cadastrado=codigo?catalogoTania.porCodigo.get(codigo):null;
+ let encontrado=cadastrado,referencia=codigo?'Código '+codigo:'Descrição';
  if(!encontrado){
-  return {status:'VALIDAR',motivo:codigo?'Código '+codigo+' não encontrado na lista da Tânia Bulhões. Conferir com o cadastro do cliente antes de liberar ou devolver.':'Código do produto (cProd) ausente no XML. Conferir manualmente.'};
+  const iguais=catalogoTania.porDescricao.get(chaveDescricaoTania(descricao))||[];
+  const situacoes=new Set(iguais.map(x=>x.status));
+  if(situacoes.size>1)return {status:'VALIDAR',motivo:'Descrição encontrada com classificações DG e NOR diferentes. Conferir o código do produto; não bloquear automaticamente.'};
+  if(iguais.length){
+   encontrado=iguais[0];
+   referencia='Descrição exata do produto (sem código correspondente)';
+  }
  }
- if(encontrado.status==='NOR'){
-  return {status:'LIBERADO',motivo:'NOR — produto normal. Código '+codigo+'. Sem bloqueio DGR e fora do protocolo de devolução.'};
- }
- if(encontrado.status==='DG'){
-  return {status:'BLOQUEAR',motivo:'DG — Código '+codigo+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir documentação e procedimento de devolução.'};
- }
- return {status:'VALIDAR',motivo:'Classificação do código '+codigo+' não reconhecida. Não bloquear automaticamente.'};
+ if(!encontrado)return {status:'VALIDAR',motivo:'Produto não identificado no catálogo DG/NOR da Tânia Bulhões por código ou descrição exata. Conferir antes de decidir.'};
+ if(encontrado.status==='NOR')return {status:'LIBERADO',motivo:'NOR — produto normal. '+referencia+'. Sem bloqueio e sem necessidade de validar.'};
+ if(encontrado.status==='DG')return {status:'BLOQUEAR',motivo:'DG — '+referencia+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir documentação e procedimento de devolução.'};
+ return {status:'VALIDAR',motivo:'Classificação não reconhecida. Conferir manualmente.'};
 }
 function alterarClienteDGR(){
  const cliente=document.getElementById('clienteDGR').value;
  const aviso=document.getElementById('avisoClienteDGR');
  const regras=document.getElementById('regras');
  if(aviso)aviso.textContent=cliente==='tania'
-  ? 'Tânia Bulhões: DG = BLOQUEAR; NOR = LIBERADO, sem necessidade de validação; código fora da lista ou ausente no XML = VALIDAR. Classificação somente por cProd, nunca por NCM ou nome.'
+  ? 'Tânia Bulhões: consultar código cProd; quando não houver correspondência, conferir a descrição exata na lista. NOR = LIBERADO sem validação; DG = BLOQUEAR; não localizado ou ambíguo = VALIDAR. NCM não determina o status.'
   : 'Outros clientes: classificação pelas regras gerais configuradas abaixo.';
  if(regras)regras.closest('.card').style.display=cliente==='tania'?'none':'';
  if(arquivosXMLAtuais.length && !analisandoXML)processarArquivos();
 }
 
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const sku=txt(prod,'cProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=document.getElementById('clienteDGR').value==='tania'?classificarTania(sku):classificar(descricao,ncm,regras);linhas.push({sku,status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
+async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const sku=txt(prod,'cProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=document.getElementById('clienteDGR').value==='tania'?classificarTania(sku,descricao):classificar(descricao,ncm,regras);linhas.push({sku,status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.sku)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','Código do produto (cProd)','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.sku,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
