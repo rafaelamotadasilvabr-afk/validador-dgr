@@ -799,7 +799,7 @@ NOR		PERFUMARIA	PERFUMARIA CASA	DIFUSORES	DIFUSOR PARA CARRO TANIA BULHO</textar
 
 <section class="card" id="painelProtocolos">
   <h2>Protocolos de devolução DGR por cliente</h2>
-  <p class="muted">Todos os itens com status <strong>BLOQUEAR</strong> entram obrigatoriamente no protocolo do emitente. Itens <strong>VALIDAR</strong> podem ser incluídos manualmente. Confira AWBs, volumes e fundamento antes de formalizar a devolução.</p>
+  <p class="muted">Todos os itens com status <strong>BLOQUEAR</strong> entram obrigatoriamente no protocolo do emitente. Itens <strong>VALIDAR</strong> exigem pesquisa no site oficial e conferência documental antes de inclusão manual. Confira AWBs, volumes e fundamento antes de formalizar a devolução.</p>
   <div class="actions">
     <button class="primary" onclick="imprimirProtocolos()">Imprimir / salvar PDF</button>
     <button class="dark" onclick="exportarProtocolosCSV()">Exportar protocolos CSV</button>
@@ -1068,18 +1068,19 @@ function alterarClienteDGR(){
 }
 
 function classificar(desc,ncm,regras){const alvo=norm(desc+' '+ncm);let achados=[];let status='LIBERADO';for(const r of regras){if(r.termo&&alvo.includes(r.termo)){achados.push(r.motivo);if(r.status==='BLOQUEAR')status='BLOQUEAR';else if(status!=='BLOQUEAR')status='VALIDAR'}}return{status,motivo:achados.join('; ')||'Sem regra crítica identificada'}}
-async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const sku=txt(prod,'cProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=document.getElementById('clienteDGR').value==='tania'?classificarTania(sku,descricao):classificar(descricao,ncm,regras);linhas.push({sku,status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
+async function processarArquivos(){if(analisandoXML)return;const files=arquivosXMLAtuais.length?arquivosXMLAtuais:[...document.getElementById('fileInput').files];if(!files.length){alert('Selecione ao menos um XML.');return}analisandoXML=true;linhas=[];const regras=getRegras();for(const file of files){try{const text=await file.text();const xml=new DOMParser().parseFromString(text,'text/xml');if(xml.getElementsByTagName('parsererror').length)continue;const inf=xml.getElementsByTagName('infNFe')[0];const ide=xml.getElementsByTagName('ide')[0];const emit=xml.getElementsByTagName('emit')[0];const dest=xml.getElementsByTagName('dest')[0];const destinatario=txt(dest,'xNome');const chave=inf?(inf.getAttribute('Id')||'').replace('NFe',''):'';const nf=txt(ide,'nNF');const serie=txt(ide,'serie');const emitente=txt(emit,'xNome');const cnpjEmit=txt(emit,'CNPJ');const dets=xml.getElementsByTagName('det');for(const det of dets){const itemIndice=det.getAttribute('nItem')||'';const prod=det.getElementsByTagName('prod')[0];if(!prod)continue;const descricao=txt(prod,'xProd');const sku=txt(prod,'cProd');const ncm=txt(prod,'NCM');const qtd=txt(prod,'qCom');const valor=txt(prod,'vProd');const c=document.getElementById('clienteDGR').value==='tania'?classificarTania(sku,descricao):classificar(descricao,ncm,regras);linhas.push({sku,status:c.status,motivo:c.motivo,chave,nf,serie,emitente,cnpjEmit,destinatario,itemIndice,descricao,ncm,qtd,valor,arquivo:file.name})}}catch(e){console.error('Erro no arquivo',file.name,e)}}totalXmlProcessado=files.length;protocoloCampos.clear();protocoloOpcionais.clear();protocoloConferidos.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos();analisandoXML=false}
 function atualizarKPIs(){document.getElementById('kpiXml').textContent=totalXmlProcessado;document.getElementById('kpiItens').textContent=linhas.length;document.getElementById('kpiBloq').textContent=linhas.filter(x=>x.status==='BLOQUEAR').length;document.getElementById('kpiVal').textContent=linhas.filter(x=>x.status==='VALIDAR').length;document.getElementById('kpiOk').textContent=linhas.filter(x=>x.status==='LIBERADO').length}
 function renderizarTabela(){const termo=norm(document.getElementById('busca').value);const tb=document.querySelector('#resultado tbody');tb.innerHTML='';const filtradas=linhas.filter(l=>!termo||norm(Object.values(l).join(' ')).includes(termo));for(const l of filtradas){const cls=l.status==='BLOQUEAR'?'bloquear':l.status==='VALIDAR'?'validar':'liberado';const tr=document.createElement('tr');tr.innerHTML=`<td><span class="status ${cls}">${l.status}</span></td><td>${esc(l.motivo)}</td><td>${esc(l.chave)}</td><td>${esc(l.nf)}</td><td>${esc(l.serie)}</td><td>${esc(l.emitente)}</td><td>${esc(l.cnpjEmit)}</td><td class="produto">${esc(l.descricao)}</td><td>${esc(l.sku)}</td><td>${esc(l.qtd)}</td><td>${esc(l.valor)}</td><td>${esc(l.arquivo)}</td>`;tb.appendChild(tr)}}
 function exportarCSV(){if(!linhas.length){alert('Analise os XMLs primeiro.');return}const headers=['Status','Motivo','Chave NF-e','NF','Serie','Emitente','CNPJ Emitente','Produto','Código do produto (cProd)','Qtd','Valor','Arquivo'];const rows=linhas.map(l=>[l.status,l.motivo,l.chave,l.nf,l.serie,l.emitente,l.cnpjEmit,l.descricao,l.sku,l.qtd,l.valor,l.arquivo]);const csv=[headers,...rows].map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='resultado_dgr_xml.csv';a.click()}
-function limpar(){linhas=[];arquivosXMLAtuais=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('arquivosSelecionados').textContent='Nenhum arquivo selecionado.';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
+function limpar(){linhas=[];arquivosXMLAtuais=[];totalXmlProcessado=0;document.getElementById('fileInput').value='';document.getElementById('arquivosSelecionados').textContent='Nenhum arquivo selecionado.';document.getElementById('busca').value='';protocoloCampos.clear();protocoloOpcionais.clear();protocoloConferidos.clear();atualizarKPIs();renderizarTabela();renderizarProtocolos()}
 
 
 /* Protocolos no layout operacional de sete colunas do modelo enviado. */
 const protocoloCampos = new Map();
 const protocoloOpcionais = new Set();
+const protocoloConferidos = new Set();
 function protocoloId(l){return [l.chave,l.nf,l.cnpjEmit,l.arquivo,l.itemIndice??'',l.descricao].join('|')}
-function protocoloIncluido(l){return l.status==='BLOQUEAR'||(l.status==='VALIDAR'&&protocoloOpcionais.has(protocoloId(l)))}
+function protocoloIncluido(l){return l.status==='BLOQUEAR'||(l.status==='VALIDAR'&&protocoloConferidos.has(protocoloId(l))&&protocoloOpcionais.has(protocoloId(l)))}
 function protocoloItens(){return linhas.filter(protocoloIncluido)}
 function protocoloGrupo(){
   const grupos=new Map();
@@ -1113,9 +1114,18 @@ function renderizarProtocolos(){
   const el=document.getElementById('listaProtocolos');if(!el)return;
   const opcionais=linhas.filter(l=>l.status==='VALIDAR'),grupos=protocoloGrupo();
   let html='';
-  if(opcionais.length)html+='<h3 style="font-size:14px">Itens VALIDAR — inclusão opcional</h3>'+opcionais.map(l=>{
+  if(opcionais.length)html+='<h3 style="font-size:14px">Itens VALIDAR — consultar site e documentação antes de decidir</h3>'+opcionais.map(l=>{
     const id=protocoloId(l);
-    return '<label style="display:block;margin:8px 0"><input type="checkbox" data-popt="'+esc(id)+'" '+(protocoloOpcionais.has(id)?'checked':'')+'> NF '+esc(l.nf)+' — '+esc(l.emitente)+' — '+esc(l.descricao)+'</label>'
+    const verificado=protocoloConferidos.has(id);
+    const pesquisa='https://www.google.com/search?q='+encodeURIComponent('site:taniabulhoes.com.br '+l.descricao);
+    return '<div style="padding:12px;margin:9px 0;border:1px solid #E2E7EF;border-radius:9px;background:#FFF">'+
+    '<strong>NF '+esc(l.nf)+' — '+esc(l.descricao)+'</strong> <span class="muted">Código: '+esc(l.sku||'não informado')+'</span>'+
+    '<p class="muted" style="margin:8px 0">Pendente de conferência. Pesquise o produto no site oficial e confira a composição/documentação antes de qualquer decisão DGR.</p>'+
+    '<a target="_blank" rel="noopener noreferrer" href="'+esc(pesquisa)+'" style="margin-right:12px">Pesquisar produto no site oficial</a>'+
+    '<a target="_blank" rel="noopener noreferrer" href="https://www.taniabulhoes.com.br/">Abrir site Tânia Bulhões</a>'+
+    '<div style="margin-top:12px"><label><input type="checkbox" data-conferido="'+esc(id)+'" '+(verificado?'checked':'')+'> Conferência realizada (site e documentação verificados)</label></div>'+
+    '<label style="display:block;margin:8px 0"><input type="checkbox" data-popt="'+esc(id)+'" '+(protocoloOpcionais.has(id)?'checked':'')+(verificado?'':' disabled')+'> Incluir manualmente no protocolo (somente após conferência)</label>'+
+    '</div>'
   }).join('');
   if(!grupos.length)html+='<p class="muted">Nenhum item para protocolo. Todos os itens BLOQUEAR entram automaticamente após analisar XMLs.</p>';
   for(const [id,g] of grupos){
@@ -1135,6 +1145,7 @@ function renderizarProtocolos(){
     html+='<div style="display:flex;flex-wrap:wrap;gap:10px">'+[['recebedor','NOME'],['documento','RG/CPF/RA'],['recebimento','DATA/HORA']].map(([key,label])=>'<label class="small">'+label+' '+pInput('grupo:'+id,key,protocoloValor('grupo:'+id,key),'190px')+'</label>').join('')+'</div></div>';
   }
   el.innerHTML=html;
+  el.querySelectorAll('[data-conferido]').forEach(e=>e.addEventListener('change',()=>{if(e.checked)protocoloConferidos.add(e.dataset.conferido);else{protocoloConferidos.delete(e.dataset.conferido);protocoloOpcionais.delete(e.dataset.conferido)}renderizarProtocolos()}));
   el.querySelectorAll('[data-popt]').forEach(e=>e.addEventListener('change',()=>{if(e.checked)protocoloOpcionais.add(e.dataset.popt);else protocoloOpcionais.delete(e.dataset.popt);renderizarProtocolos()}));
   el.querySelectorAll('[data-pcampo]').forEach(e=>e.addEventListener('input',()=>{protocoloCampo(e.dataset.pgrupo,e.dataset.pcampo,e.value);if(e.dataset.pcampo==='quantidade'){for(const [gid,g] of protocoloGrupo()){const t=el.querySelector('[data-total="'+gid+'"]');if(t)t.textContent=protocoloTotalVolumes(g.itens)}}}));
 }
