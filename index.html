@@ -46,7 +46,7 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
       <div style="margin:0 0 16px">
         <label for="clienteDGR" style="display:block;font-size:13px;font-weight:700;margin-bottom:7px">Cliente / regra de classificação</label>
         <select id="clienteDGR" onchange="alterarClienteDGR()" style="width:100%;padding:12px;border:1px solid var(--borda);border-radius:10px;background:#fff;color:var(--texto)">
-          <option value="tania">Tânia Bulhões — catálogo completo DG / NOR / VALIDAR (628 códigos)</option>
+          <option value="tania">Tânia Bulhões — DG bloqueia, NOR libera, fora da lista validar</option>
           <option value="geral">Outros clientes — regras gerais DGR</option>
         </select>
         <p id="avisoClienteDGR" class="muted" style="margin:8px 0 0">Selecione o cliente antes de carregar os XMLs ou ZIPs.</p>
@@ -846,7 +846,7 @@ function alterarClienteDGR(){
  const aviso=document.getElementById('avisoClienteDGR');
  const regras=document.getElementById('regras');
  if(aviso)aviso.textContent=cliente==='tania'
-  ? 'Tânia Bulhões: classificar exclusivamente pelo código cProd. DG = BLOQUEAR; NOR = LIBERADO; código ausente = VALIDAR. Não utilizar NCM ou nome do produto.'
+  ? 'Tânia Bulhões: DG = BLOQUEAR; NOR = LIBERADO, sem necessidade de validação; código fora da lista ou ausente no XML = VALIDAR. Classificação somente por cProd, nunca por NCM ou nome.'
   : 'Outros clientes: classificação pelas regras gerais configuradas abaixo.';
  if(regras)regras.closest('.card').style.display=cliente==='tania'?'none':'';
  if(arquivosXMLAtuais.length && !analisandoXML)processarArquivos();
