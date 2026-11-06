@@ -76,7 +76,7 @@ main{max-width:1500px;margin:0 auto;padding:24px 28px 40px}.grid{display:grid;gr
     </section>
   </div>
 
-  <section class="card">
+  <section class="card" hidden aria-hidden="true">
     <h2>Regras de alerta DGR</h2>
     <p class="muted">Formato: <b>TERMO|STATUS|MOTIVO</b>. Uma regra por linha. O sistema pesquisa na descrição do produto e no NCM.</p>
     <textarea id="regras">LITIO|BLOQUEAR|Bateria de lítio / possível restrição DGR
@@ -1063,7 +1063,7 @@ function alterarClienteDGR(){
  if(aviso)aviso.textContent=cliente==='tania'
   ? 'Tânia Bulhões: catálogo original por código e descrição tem prioridade; regras complementares por termos são aplicadas somente depois. DG bloqueia, NOR/ISENTO libera, sem correspondência valida. O NCM não determina o status.'
   : 'Outros clientes: classificação pelas regras gerais configuradas abaixo.';
- if(regras)regras.closest('.card').style.display=cliente==='tania'?'none':'';
+ // As regras permanecem internas e nunca aparecem na interface.
  if(arquivosXMLAtuais.length && !analisandoXML)processarArquivos();
 }
 
