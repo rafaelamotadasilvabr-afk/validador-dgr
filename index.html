@@ -837,30 +837,231 @@ function obterCatalogoTania(){
  return {porCodigo,porDescricao};
 }
 const catalogoTania=obterCatalogoTania();
+const regrasComplementaresTania=[
+ {
+  "termo": "DIFUSOR PARA CARRO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "REFIL DIFUSOR PARA CARRO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "KIT DIFUSOR DOURADO PARA CARRO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "KIT DIFUSOR PRETO PARA CARRO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "DIFUSOR DE PORCELANA",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "AVULSO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "DIFUSOR ELETRICO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "SABONETE LIQUIDO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "HIDRATANTE",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "CREME REPARADOR",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "VELA PERFUMADA",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "SABONETE EM BARRA",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "PASTILHAS PARA PISO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "FOLHAS PARA PISO",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "PASTA PARA PANELAS",
+  "classe": "ISENTO",
+  "instrucao": "Liberar como Carga Comum",
+  "risco": "Não Regulamentado"
+ },
+ {
+  "termo": "DIFUSOR PARA AMBIENTE",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "REFIL PARA DIFUSOR DE AMBIENTE",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "ESSENCIA PARA DIFUSOR ELETRICO",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "AROMATIZADOR DE AMBIENTE",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "HOME SPRAY",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "AGUA PERFUMADA PARA ROUPAS",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "AGUA DE PASSAR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "PARFUM",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "EAU DE PARFUM",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "COLONIA PARA CABELO",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "FRAGRANCIA PARA CABELO",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "CHEF DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "FIGO NEGRO DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "LAVANDA DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "JARDIM DE IRIS DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "JADE DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ },
+ {
+  "termo": "CHA VERDE DIFUSOR",
+  "classe": "DG",
+  "instrucao": "Bloquear como Artigo Perigoso",
+  "risco": "3 - UN 1266"
+ }
+];
+
 function classificarTania(sku,descricao){
  const codigo=String(sku||'').trim().toUpperCase();
- const cadastrado=codigo?catalogoTania.porCodigo.get(codigo):null;
- let encontrado=cadastrado,referencia=codigo?'Código '+codigo:'Descrição';
+ let encontrado=codigo?catalogoTania.porCodigo.get(codigo):null;
+ let referencia=encontrado?'Código '+codigo:'Descrição exata';
  if(!encontrado){
   const iguais=catalogoTania.porDescricao.get(chaveDescricaoTania(descricao))||[];
   const situacoes=new Set(iguais.map(x=>x.status));
-  if(situacoes.size>1)return {status:'VALIDAR',motivo:'Descrição encontrada com classificações DG e NOR diferentes. Conferir o código do produto; não bloquear automaticamente.'};
-  if(iguais.length){
-   encontrado=iguais[0];
-   referencia='Descrição exata do produto (sem código correspondente)';
-  }
+  if(situacoes.size>1)return {status:'VALIDAR',motivo:'Descrição encontrada na lista com classificações DG e NOR conflitantes. Conferir manualmente.'};
+  if(iguais.length)encontrado=iguais[0];
  }
- if(!encontrado)return {status:'VALIDAR',motivo:'Produto não identificado no catálogo DG/NOR da Tânia Bulhões por código ou descrição exata. Conferir antes de decidir.'};
- if(encontrado.status==='NOR')return {status:'LIBERADO',motivo:'NOR — produto normal. '+referencia+'. Sem bloqueio e sem necessidade de validar.'};
- if(encontrado.status==='DG')return {status:'BLOQUEAR',motivo:'DG — '+referencia+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir documentação e procedimento de devolução.'};
- return {status:'VALIDAR',motivo:'Classificação não reconhecida. Conferir manualmente.'};
+ if(encontrado){
+  if(encontrado.status==='NOR')return {status:'LIBERADO',motivo:'NOR — produto normal. '+referencia+'. Sem bloqueio ou validação.'};
+  if(encontrado.status==='DG')return {status:'BLOQUEAR',motivo:'DG — '+referencia+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir procedimento de devolução.'};
+ }
+ // Regras complementares somente após não localizar SKU/descrição no catálogo original.
+ // Termos DG prevalecem sobre ISENTO quando ambos aparecem no mesmo item.
+ const alvo=' '+chaveDescricaoTania(descricao).replace(/[^A-Z0-9]+/g,' ').trim()+' ';
+ const encontradas=regrasComplementaresTania.filter(r=>alvo.includes(' '+chaveDescricaoTania(r.termo).replace(/[^A-Z0-9]+/g,' ').trim()+' '));
+ const dg=encontradas.find(r=>r.classe==='DG');
+ if(dg)return {status:'BLOQUEAR',motivo:'DG — '+dg.termo+'. Regra complementar: '+dg.instrucao+'; referência informada: '+dg.risco+'. Conferir documentação e procedimento.'};
+ const isento=encontradas.find(r=>r.classe==='ISENTO');
+ if(isento)return {status:'LIBERADO',motivo:'NOR / ISENTO — '+isento.termo+'. '+isento.instrucao+'. Sem necessidade de validação por esta regra.'};
+ return {status:'VALIDAR',motivo:'Código e descrição não identificados no catálogo DG/NOR nem nas regras complementares. Conferir manualmente.'};
 }
 function alterarClienteDGR(){
  const cliente=document.getElementById('clienteDGR').value;
  const aviso=document.getElementById('avisoClienteDGR');
  const regras=document.getElementById('regras');
  if(aviso)aviso.textContent=cliente==='tania'
-  ? 'Tânia Bulhões: consultar código cProd; quando não houver correspondência, conferir a descrição exata na lista. NOR = LIBERADO sem validação; DG = BLOQUEAR; não localizado ou ambíguo = VALIDAR. NCM não determina o status.'
+  ? 'Tânia Bulhões: catálogo original por código e descrição tem prioridade; regras complementares por termos são aplicadas somente depois. DG bloqueia, NOR/ISENTO libera, sem correspondência valida. O NCM não determina o status.'
   : 'Outros clientes: classificação pelas regras gerais configuradas abaixo.';
  if(regras)regras.closest('.card').style.display=cliente==='tania'?'none':'';
  if(arquivosXMLAtuais.length && !analisandoXML)processarArquivos();
