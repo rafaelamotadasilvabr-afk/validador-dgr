@@ -834,9 +834,12 @@ function classificarTania(sku){
   return {status:'VALIDAR',motivo:codigo?'Código '+codigo+' não encontrado na lista da Tânia Bulhões. Conferir com o cadastro do cliente antes de liberar ou devolver.':'Código do produto (cProd) ausente no XML. Conferir manualmente.'};
  }
  if(encontrado.status==='NOR'){
-  return {status:'LIBERADO',motivo:'NOR — produto normal segundo o cadastro da Tânia Bulhões. Código '+codigo+'. Não incluir automaticamente no protocolo DGR.'};
+  return {status:'LIBERADO',motivo:'NOR — produto normal. Código '+codigo+'. Sem bloqueio DGR e fora do protocolo de devolução.'};
  }
- return {status:'BLOQUEAR',motivo:'DG — Código '+codigo+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir documentação e procedimento de devolução.'};
+ if(encontrado.status==='DG'){
+  return {status:'BLOQUEAR',motivo:'DG — Código '+codigo+'; categoria: '+encontrado.categoria+'; descrição: '+encontrado.descricao+'. Conferir documentação e procedimento de devolução.'};
+ }
+ return {status:'VALIDAR',motivo:'Classificação do código '+codigo+' não reconhecida. Não bloquear automaticamente.'};
 }
 function alterarClienteDGR(){
  const cliente=document.getElementById('clienteDGR').value;
